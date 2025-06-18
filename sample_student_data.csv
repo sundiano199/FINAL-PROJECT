@@ -1,0 +1,51 @@
+Registration No,Name,Preferred Course,UTME Score,Post-UTME Score,English,Maths,Physics,Chemistry,Biology,Agric,Civic Education,Geography,Economics,Government,Literature
+REG2025_1000,Student_0,Industrial Chemistry,300,80,A1,C5,F9,F9,B3,B2,B3,B3,C5,,
+REG2025_1001,Student_1,Mathematics and Statistics,298,74,F9,C5,B3,F9,C5,C4,A1,B3,,F9,
+REG2025_1002,Student_2,Applied Physics,288,69,C4,E8,A1,B2,F9,A1,,B3,C5,E8,
+REG2025_1003,Student_3,Animal and Environmental Biology,229,75,A1,F9,F9,E8,D7,D7,E8,,C6,B2,
+REG2025_1004,Student_4,Animal and Environmental Biology,286,40,D7,E8,B2,A1,B3,C5,B2,,B2,,D7
+REG2025_1005,Student_5,Plant Science and Biotechnology,211,54,A1,F9,D7,D7,C4,A1,C6,F9,,F9,
+REG2025_1006,Student_6,Mathematics and Statistics,287,68,A1,B3,B3,F9,B2,B2,B3,,,C5,C6
+REG2025_1007,Student_7,Animal and Environmental Biology,190,84,C6,E8,E8,B3,B2,C4,A1,,,D7,F9
+REG2025_1008,Student_8,Mathematics and Statistics,281,73,A1,E8,B3,B2,C6,D7,E8,B2,,A1,
+REG2025_1009,Student_9,Plant Science and Biotechnology,266,85,C6,F9,F9,C4,C5,C4,,B2,,B2,C4
+REG2025_1010,Student_10,Biochemistry,192,52,C5,B2,A1,F9,C6,B2,C6,,,D7,E8
+REG2025_1011,Student_11,Plant Science and Biotechnology,192,75,C4,B2,C4,C5,E8,D7,F9,,B3,F9,
+REG2025_1012,Student_12,Mathematics and Statistics,287,65,B3,B2,B3,B3,C6,F9,,,C6,C5,B3
+REG2025_1013,Student_13,Animal and Environmental Biology,218,43,C6,C6,B3,C6,C5,C4,F9,,B2,,C4
+REG2025_1014,Student_14,Mathematics and Statistics,191,60,B3,B2,B3,C6,D7,D7,A1,A1,,,D7
+REG2025_1015,Student_15,Biochemistry,204,62,C6,C5,B3,F9,C5,A1,C5,A1,,B3,
+REG2025_1016,Student_16,Applied Physics,224,44,B3,C5,A1,B3,C4,F9,A1,,B2,,B3
+REG2025_1017,Student_17,Mathematics and Statistics,289,78,A1,E8,C5,C5,B2,B2,B3,C5,B3,,
+REG2025_1018,Student_18,Microbiology,187,83,B2,B2,A1,B2,B3,A1,A1,,,D7,C4
+REG2025_1019,Student_19,Physics,224,64,A1,D7,E8,B3,C4,C6,C6,E8,E8,,
+REG2025_1020,Student_20,Animal and Environmental Biology,235,41,B3,D7,C6,E8,D7,C6,,B2,,A1,B3
+REG2025_1021,Student_21,Microbiology,182,55,E8,E8,F9,D7,D7,B3,C4,,B3,C4,
+REG2025_1022,Student_22,Biochemistry,202,41,D7,C6,A1,B2,D7,B2,,,E8,C4,E8
+REG2025_1023,Student_23,Computer Science,300,88,D7,E8,B3,C6,C5,D7,,,B3,B3,C4
+REG2025_1024,Student_24,Biochemistry,249,78,A1,B2,A1,C5,D7,F9,,F9,C6,,B2
+REG2025_1025,Student_25,Biochemistry,236,50,E8,F9,E8,D7,B3,F9,A1,E8,E8,,
+REG2025_1026,Student_26,Computer Science,210,68,C5,C5,E8,D7,B2,E8,,A1,,C5,A1
+REG2025_1027,Student_27,Microbiology,236,68,B2,A1,A1,C4,F9,C4,C4,C6,,,B3
+REG2025_1028,Student_28,Physics,269,88,C5,C5,D7,C5,C6,C6,E8,A1,F9,,
+REG2025_1029,Student_29,Animal and Environmental Biology,251,41,A1,C6,C4,F9,D7,C5,E8,,C5,,F9
+REG2025_1030,Student_30,Microbiology,289,83,B3,A1,B2,B2,D7,E8,C4,,B3,,B3
+REG2025_1031,Student_31,Microbiology,247,80,C5,F9,C5,B3,B2,A1,B3,,,C5,C4
+REG2025_1032,Student_32,Animal and Environmental Biology,216,63,C6,A1,C6,C4,E8,C4,,C4,C5,,E8
+REG2025_1033,Student_33,Mathematics and Statistics,185,61,A1,B2,B3,F9,B2,E8,,D7,C5,,B2
+REG2025_1034,Student_34,Physics,277,71,C5,D7,F9,C4,D7,A1,,C4,C6,B2,
+REG2025_1035,Student_35,Animal and Environmental Biology,189,75,B2,F9,E8,C6,C5,A1,,,D7,E8,B2
+REG2025_1036,Student_36,Plant Science and Biotechnology,237,48,F9,B3,A1,A1,B3,C6,,C6,F9,,F9
+REG2025_1037,Student_37,Mathematics and Statistics,207,40,C5,A1,E8,F9,C4,A1,,C4,D7,,B3
+REG2025_1038,Student_38,Animal and Environmental Biology,189,87,A1,C5,F9,C5,B3,B3,A1,,C6,,C5
+REG2025_1039,Student_39,Applied Physics,183,49,B2,C6,D7,F9,B2,B2,F9,A1,F9,,
+REG2025_1040,Student_40,Computer Science,292,57,B2,B3,D7,C5,A1,C4,,C6,F9,C4,
+REG2025_1041,Student_41,Plant Science and Biotechnology,195,57,B2,C5,A1,A1,D7,C5,C4,,,C4,B2
+REG2025_1042,Student_42,Plant Science and Biotechnology,189,70,E8,B3,C6,F9,F9,D7,E8,,,F9,A1
+REG2025_1043,Student_43,Applied Physics,214,61,A1,C4,D7,C5,F9,F9,C6,,,A1,D7
+REG2025_1044,Student_44,Industrial Chemistry,283,55,E8,C6,B2,B2,F9,F9,,,F9,E8,C6
+REG2025_1045,Student_45,Computer Science,190,58,E8,B2,B2,D7,C6,B3,,C6,D7,B2,
+REG2025_1046,Student_46,Mathematics and Statistics,265,50,A1,B3,E8,D7,C4,E8,,D7,B2,,C4
+REG2025_1047,Student_47,Industrial Chemistry,257,42,D7,C5,B3,F9,C6,B2,B2,C6,,B3,
+REG2025_1048,Student_48,Physics,185,77,C4,C5,C5,F9,C6,C6,,B3,,F9,F9
+REG2025_1049,Student_49,Animal and Environmental Biology,266,74,C6,E8,E8,D7,D7,D7,C5,B2,,F9,
