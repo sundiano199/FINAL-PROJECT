@@ -83,7 +83,7 @@ joblib.dump(le, "label_encoder.pkl")
 print("✅ Model trained and saved as 'admission_model.pkl' and 'label_encoder.pkl'")
 # --- Database Setup ---
 def initialize_db():
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect("students.db")
     cursor = conn.cursor()
 
     # Create students table
@@ -300,6 +300,36 @@ class MainApp:
         "D7": 2, "E8": 1, "F9": 0
     }
 
+    def full_student_registration(self):
+        import sqlite3
+
+        biodata = {label: entry.get().strip() for label, entry in self.reg_entries.items()}
+        biodata["Photo"] = self.photo_path.get()
+
+        if not biodata["Registration Number"]:
+            messagebox.showerror("Missing Data", "Registration Number is required.")
+            return
+
+        try:
+            conn = sqlite3.connect("students.db")
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR REPLACE INTO students (
+                    reg_no, surname, othernames, sex, preferred_course,
+                    dob, nationality, session, reg_date, year, photo_path
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                biodata['Registration Number'], biodata['Surname'], biodata['Other Names'], biodata['Sex'],
+                biodata['Preferred Course of Study'], biodata['Date of Birth'], biodata['Nationality'],
+                biodata['Session'], biodata['Date of Registration'], biodata['Year'], biodata['Photo']
+            ))
+            conn.commit()
+            conn.close()
+            messagebox.showinfo("Success", "Student bio data saved successfully.")
+            self.clear_entries()
+        except Exception as e:
+            messagebox.showerror("Database Error", str(e))
+
     def predict_course(candidate_data):
         try:
             # Extract and transform grades and scores
@@ -497,7 +527,7 @@ class MainApp:
         self.tree.item(selected, values=new_values)
 
         # Update database
-        conn = sqlite3.connect(DB_NAME)
+        conn = sqlite3.connect("students.db")
         cursor = conn.cursor()
         try:
             cursor.execute("""
@@ -547,7 +577,7 @@ class MainApp:
 
         # Optional: Save to database here
 
-        conn = sqlite3.connect(DB_NAME)
+        conn = sqlite3.connect("students.db")
         cursor = conn.cursor()
         cursor.execute("""
             UPDATE students SET 
@@ -573,7 +603,7 @@ class MainApp:
         reg_no = self.tree.item(selected)['values'][0]
 
         # Delete from database
-        conn = sqlite3.connect(DB_NAME)
+        conn = sqlite3.connect("students.db")
         cursor = conn.cursor()
         cursor.execute("DELETE FROM students WHERE reg_no=?", (reg_no,))
         conn.commit()
@@ -600,7 +630,7 @@ class MainApp:
         tk.Label(form_frame, text="Registration Number:", font=FONT_NORMAL, bg=BG_COLOR).grid(row=0, column=0,
                                                                                               sticky='e', padx=10,
                                                                                               pady=10)
-        conn = sqlite3.connect(DB_NAME)
+        conn = sqlite3.connect("students.db")
         cursor = conn.cursor()
         cursor.execute("SELECT reg_no FROM students")
         reg_nos = [row[0] for row in cursor.fetchall()]
@@ -673,7 +703,7 @@ class MainApp:
                 messagebox.showerror("Error", "Please ensure all scores are valid numbers.")
                 return
 
-            conn = sqlite3.connect(DB_NAME)
+            conn = sqlite3.connect("students.db")
             cursor = conn.cursor()
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS utme_postutme (
@@ -715,86 +745,126 @@ class MainApp:
             .grid(row=1, column=0, padx=10, pady=(10, 0))
 
     def import_candidate_prediction_data(self):
+        from tkinter import filedialog
+        import pandas as pd
+        import joblib
+        import sqlite3
+
+        # Load trained model
+        try:
+            model = joblib.load("admission_model.pkl")
+        except Exception as e:
+            messagebox.showerror("Model Error", f"Failed to load prediction model:\n{e}")
+            return
+
         file_path = filedialog.askopenfilename(
-            title="Select CSV or Excel file",
-            filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx *.xls")]
+            filetypes=[("CSV Files", "*.csv"), ("Excel Files", "*.xlsx")],
+            title="Select Candidate Data File"
         )
         if not file_path:
             return
 
         try:
-            df = pd.read_csv(file_path) if file_path.endswith(".csv") else pd.read_excel(file_path)
-
-            required_columns = [
-                'reg_no', 'surname', 'othernames', 'sex', 'dob', 'preferred_course',
-                'nationality', 'session', 'reg_date', 'year'
-            ]
-            if not all(col in df.columns for col in required_columns):
-                messagebox.showerror("Error", "Missing required columns in the file.")
-                return
-
-            conn = sqlite3.connect(DB_NAME)
-            cursor = conn.cursor()
-
-            model = joblib.load("admission_model.pkl")
-            label_encoder = joblib.load("label_encoder.pkl")
-
-            grade_map = {
-                "A1": 8, "B2": 7, "B3": 6,
-                "C4": 5, "C5": 4, "C6": 3,
-                "D7": 2, "E8": 1, "F9": 0
-            }
-
-            for _, row in df.iterrows():
-                values = tuple(row[col] for col in required_columns)
-
-                # Insert biodata
-                cursor.execute("""
-                    INSERT OR REPLACE INTO students (
-                        reg_no, surname, othernames, sex, dob, preferred_course, 
-                        nationality, session, reg_date, year
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, values)
-
-                reg_no = row['reg_no']
-                preferred_course = row['preferred_course']
-
-                # Fetch scores
-                cursor.execute("""
-                    SELECT utme_score, post_utme_score, English, Maths, Physics,
-                           Chemistry, Biology, Agric
-                    FROM scores WHERE reg_no = ?
-                """, (reg_no,))
-                result = cursor.fetchone()
-                if not result:
-                    continue
-
-                utme_score, post_utme_score, *grades = result
-                numeric_grades = [grade_map.get(g, 0) for g in grades]
-                model_input = pd.DataFrame([model_input[0]], columns=[
-                    "UTME Score", "Post-UTME Score", "English", "Maths", "Physics", "Chemistry", "Biology", "Agric"
-                ])
-
-                predicted_class = model.predict(model_input)[0]
-                predicted_course = label_encoder.inverse_transform([predicted_class])[0]
-
-                # Admission logic
-                admitted = "Admitted" if utme_score > 200 and post_utme_score > 60 else "Not Admitted"
-
-                # Save result
-                cursor.execute("""
-                    INSERT OR REPLACE INTO admission_results (
-                        reg_no, preferred_course, predicted_course, admission_status
-                    ) VALUES (?, ?, ?, ?)
-                """, (reg_no, preferred_course, predicted_course, admitted))
-
-            conn.commit()
-            conn.close()
-            self.load_candidate_courses_data()
-            messagebox.showinfo("Success", "Candidates imported and predictions saved.")
-
+            if file_path.endswith('.csv'):
+                df = pd.read_csv(file_path)
+            else:
+                df = pd.read_excel(file_path)
         except Exception as e:
-            messagebox.showerror("Import Error", f"Could not import data:\n{e}")
+            messagebox.showerror("File Error", f"Could not read file:\n{e}")
+            return
+
+        required_cols = ['reg_no', 'name', 'preferred_course']
+        if not all(col in df.columns for col in required_cols):
+            messagebox.showerror("Format Error", "File must contain: reg_no, name, preferred_course")
+            return
+
+        conn = sqlite3.connect("students.db")
+        cursor = conn.cursor()
+        successful = 0
+
+        for _, row in df.iterrows():
+            reg_no = row['reg_no']
+            name = row['name']
+            preferred = row['preferred_course']
+
+            # Fetch UTME/Post-UTME scores
+            cursor.execute("SELECT total_score, post_utme_score FROM utme_postutme WHERE reg_no=?", (reg_no,))
+            utme_row = cursor.fetchone()
+            if not utme_row:
+                continue
+            total_utme, post_utme = utme_row
+
+            # Fetch O'Level grades
+            cursor.execute('''
+                SELECT grade1, grade2, grade3, grade4, grade5, grade6, grade7, grade8
+                FROM olevel_results WHERE reg_no=?
+            ''', (reg_no,))
+            olevel_row = cursor.fetchone()
+            if not olevel_row:
+                continue
+
+            # Convert grades to numbers
+            grade_map = {
+                "A1": 1, "B2": 2, "B3": 3,
+                "C4": 4, "C5": 5, "C6": 6,
+                "D7": 7, "E8": 8, "F9": 9
+            }
+            numeric_grades = [grade_map.get(g.upper(), 9) for g in olevel_row]
+
+            try:
+                # Build features
+                features_df = pd.DataFrame([{
+                    'UTME Score': total_utme,
+                    'Post-UTME Score': post_utme,
+                    'English': numeric_grades[0],
+                    'Maths': numeric_grades[1],
+                    'Physics': numeric_grades[2],
+                    'Chemistry': numeric_grades[3],
+                    'Biology': numeric_grades[4],
+                    'Agric': numeric_grades[5]
+                }])
+
+                # Predict
+                predicted_course_encoded = model.predict(features_df)[0]
+                print(f"Predicted value for {reg_no}: {predicted_course_encoded}")
+
+                # Decode course
+                course_map = {
+                    0: "Computer Science",
+                    1: "Microbiology",
+                    2: "Biochemistry",
+                    3: "Physics",
+                    4: "Applied Physics",
+                    5: "Industrial Chemistry",
+                    6: "Mathematics and Statistics",
+                    7: "Animal and Environmental Biology",
+                    8: "Plant Science and Biotechnology"
+                }
+                course_name = course_map.get(predicted_course_encoded, "Unknown")
+
+                # Admission check
+                core_subjects = numeric_grades[0:6]
+                admission_status = "Admitted" if (
+                        total_utme > 200 and post_utme > 60 and all(g <= 6 for g in core_subjects)
+                ) else "Not Admitted"
+
+                # Save prediction
+                cursor.execute('''
+                    INSERT OR REPLACE INTO candidate_courses
+                    (reg_no, name, preferred_course, predicted_course, admission_status)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (reg_no, name, preferred, course_name, admission_status))
+
+                successful += 1
+
+            except Exception as e:
+                print(f"Prediction error for {reg_no}: {e}")
+                continue
+
+        conn.commit()
+        conn.close()
+        self.load_candidate_courses_data()
+        messagebox.showinfo("Import Complete", f"{successful} candidates successfully imported and predicted.")
 
     def registered_candidates(self):
         win = tk.Toplevel(self.root)
@@ -861,7 +931,7 @@ class MainApp:
         self.load_registered_candidates_data()
 
     def load_registered_candidates_data(self):
-        conn = sqlite3.connect(DB_NAME)
+        conn = sqlite3.connect("students.db")
         cursor = conn.cursor()
         cursor.execute(
             "SELECT reg_no, surname, othernames, sex, dob, nationality, session, reg_date, year FROM students")
@@ -881,7 +951,7 @@ class MainApp:
         if selected_item:
             reg_no = tree.item(selected_item[0])['values'][0]
 
-            conn = sqlite3.connect(DB_NAME)
+            conn = sqlite3.connect("students.db")
             cursor = conn.cursor()
             cursor.execute("SELECT photo_path FROM students WHERE reg_no=?", (reg_no,))
             row = cursor.fetchone()
@@ -924,7 +994,7 @@ class MainApp:
                 messagebox.showerror("Error", "Missing required columns in file.")
                 return
 
-            conn = sqlite3.connect(DB_NAME)
+            conn = sqlite3.connect("students.db")
             cursor = conn.cursor()
 
             # Load model and encoder
@@ -1009,7 +1079,7 @@ class MainApp:
             }
 
             # Connect to DB
-            conn = sqlite3.connect(DB_NAME)
+            conn = sqlite3.connect("students.db")
             cursor = conn.cursor()
 
             # Fetch scores table
@@ -1055,10 +1125,7 @@ class MainApp:
                     return "Not Admitted"
 
                 required_utme, required_putme = cutoffs.get(course, (200, 60))
-                if utme >= required_utme and putme >= required_putme:
-                    return "Admitted"
-                else:
-                    return "Not Admitted"
+                return "Admitted" if utme >= required_utme and putme >= required_putme else "Not Admitted"
 
             # Save predictions + admission decision
             for i in range(len(df)):
@@ -1066,33 +1133,35 @@ class MainApp:
                 course = predicted_courses[i]
                 utme = df.loc[i, 'utme_score']
                 putme = df.loc[i, 'post_utme_score']
-
                 admission_status = check_admission(course, utme, putme)
 
-                # Get preferred course
-                cursor.execute("SELECT preferred_course FROM students WHERE reg_no = ?", (reg_no,))
-                result = cursor.fetchone()
-                preferred_course = result[0] if result else ""
+                # Fetch name and preferred course
+                cursor.execute("SELECT surname, othernames, preferred_course FROM students WHERE reg_no = ?", (reg_no,))
+                info = cursor.fetchone()
+                if info:
+                    surname, othernames, preferred_course = info
+                    full_name = f"{surname} {othernames}"
+                else:
+                    full_name = "Unknown"
+                    preferred_course = "Unknown"
 
-                # Save to candidate_courses
+                # Insert or update candidate course record
                 cursor.execute("""
                     INSERT OR REPLACE INTO candidate_courses (
                         reg_no, name, preferred_course, predicted_course, admission_status
-                    ) SELECT reg_no, surname || ' ' || othernames, ?, ?, ?
-                    FROM students WHERE reg_no = ?
-                """, (preferred_course, course, admission_status, reg_no))
+                    ) VALUES (?, ?, ?, ?, ?)
+                """, (reg_no, full_name, preferred_course, course, admission_status))
 
             conn.commit()
             conn.close()
 
-            messagebox.showinfo("Prediction Complete", "All students have been predicted and saved.")
             self.load_candidate_courses_data()  # Refresh treeview
 
         except Exception as e:
             messagebox.showerror("Prediction Error", f"❌ Prediction failed:\n{e}")
 
     def load_registered_candidates_data(self):
-        conn = sqlite3.connect(DB_NAME)
+        conn = sqlite3.connect("students.db")
         cursor = conn.cursor()
         cursor.execute(
             "SELECT reg_no, surname, othernames, sex, dob, nationality, session, reg_date, year FROM students")
@@ -1144,7 +1213,16 @@ class MainApp:
         if not selected:
             return
 
-        reg_no = self.tree.item(selected)['values'][0]
+        # Dynamically get the correct reg_no from the tree based on column name
+        columns = self.tree["columns"]
+        try:
+            reg_index = columns.index("reg_no")
+        except ValueError:
+            messagebox.showerror("Column Error", "'reg_no' column not found in the Treeview.")
+            return
+
+        reg_no = str(self.tree.item(selected)['values'][reg_index]).strip().upper()
+
 
         # Correct DB path
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -1157,7 +1235,7 @@ class MainApp:
         profile_win.geometry("800x600")
         profile_win.configure(bg=BG_COLOR)
 
-        # ========== Frame for Bio Data ==========
+        # ========== Bio Data ==========
         bio_frame = tk.LabelFrame(profile_win, text="Bio Data", bg=BG_COLOR, padx=10, pady=10)
         bio_frame.pack(fill="x", padx=20, pady=10)
 
@@ -1168,21 +1246,20 @@ class MainApp:
             """, (reg_no,))
             bio_data = cursor.fetchone()
 
-            labels = ["Full Name:", "Sex:", "Date of Birth:", "Email:"]
+            labels = ["Full Name:", "Sex:", "Date of Birth:"]
             if bio_data:
-                for i, label in enumerate(labels[:len(bio_data)]):  # Avoid IndexError
+                for i, label in enumerate(labels[:len(bio_data)]):
                     value = bio_data[i] if bio_data[i] else "N/A"
                     tk.Label(bio_frame, text=label, bg=BG_COLOR, anchor="w", width=15).grid(row=i, column=0, sticky="w")
                     tk.Label(bio_frame, text=value, bg=BG_COLOR, anchor="w").grid(row=i, column=1, sticky="w")
             else:
                 tk.Label(bio_frame, text="No Bio Data Found", bg=BG_COLOR, fg="red").grid(row=0, column=0, columnspan=2,
                                                                                           sticky="w")
-
         except Exception as e:
             tk.Label(bio_frame, text=f"Error: {str(e)}", bg=BG_COLOR, fg="red").grid(row=0, column=0, columnspan=2,
                                                                                      sticky="w")
 
-        # ========== UTME and POST-UTME Scores Frame ==========
+        # ========== UTME and POST-UTME Scores ==========
         scores_frame = tk.LabelFrame(profile_win, text="UTME and Post-UTME Scores", bg=BG_COLOR, padx=10, pady=10)
         scores_frame.pack(fill="x", padx=20, pady=10)
 
@@ -1202,38 +1279,6 @@ class MainApp:
                                                                                                     sticky="w")
                     tk.Label(scores_frame, text=score, bg=BG_COLOR, anchor="w").grid(row=i, column=1, sticky="w")
 
-                # ========== O'Level Results Frame ==========
-                olevel_frame = tk.LabelFrame(profile_win, text="O'Level Results", bg=BG_COLOR, padx=10, pady=10)
-                olevel_frame.pack(fill="x", padx=20, pady=10)
-
-                try:
-                    cursor.execute("""
-                        SELECT subject1, grade1, subject2, grade2, subject3, grade3,
-                                subject4, grade4, subject5, grade5, subject6, grade6,
-                                subject7, grade7, subject8, grade8, subject9, grade9
-                        FROM olevel_results WHERE reg_no=?
-                    """, (reg_no,))
-                    olevel_data = cursor.fetchone()
-
-                    if olevel_data:
-                        for i in range(9):
-                            subject = olevel_data[i * 2] or "N/A"
-                            grade = olevel_data[i * 2 + 1] or "N/A"
-                            tk.Label(olevel_frame, text=f"{subject}:", bg=BG_COLOR, anchor="w", width=20).grid(
-                                    row=i, column=0, sticky="w")
-                            tk.Label(olevel_frame, text=grade, bg=BG_COLOR, anchor="w").grid(row=i, column=1,
-                                                                                                 sticky="w")
-                    else:
-                        tk.Label(olevel_frame, text="No O'Level Results Found", bg=BG_COLOR, fg="red").grid(row=0,
-                                                                                                                column=0,
-                                                                                                                columnspan=2,
-                                                                                                                sticky="w")
-
-                except Exception as e:
-                    tk.Label(olevel_frame, text=f"Error loading O'Level data: {str(e)}", bg=BG_COLOR,
-                                fg="red").grid(row=0, column=0, columnspan=2, sticky="w")
-
-                # Display total and post-UTME scores
                 tk.Label(scores_frame, text="Total UTME Score:", bg=BG_COLOR, anchor="w", width=20).grid(row=4,
                                                                                                          column=0,
                                                                                                          sticky="w")
@@ -1253,6 +1298,36 @@ class MainApp:
             tk.Label(scores_frame, text=f"Error loading scores: {str(e)}", bg=BG_COLOR, fg="red").grid(row=0, column=0,
                                                                                                        columnspan=2,
                                                                                                        sticky="w")
+
+        # ========== O'Level Results ==========
+        olevel_frame = tk.LabelFrame(profile_win, text="O'Level Results", bg=BG_COLOR, padx=10, pady=10)
+        olevel_frame.pack(fill="x", padx=20, pady=10)
+
+        try:
+            cursor.execute("""
+                SELECT subject1, grade1, subject2, grade2, subject3, grade3,
+                       subject4, grade4, subject5, grade5, subject6, grade6,
+                       subject7, grade7, subject8, grade8, subject9, grade9
+                FROM olevel_results WHERE reg_no=?
+            """, (reg_no,))
+            olevel_data = cursor.fetchone()
+
+            if olevel_data:
+                for i in range(9):
+                    subject = olevel_data[i * 2] or "N/A"
+                    grade = olevel_data[i * 2 + 1] or "N/A"
+                    tk.Label(olevel_frame, text=f"{subject}:", bg=BG_COLOR, anchor="w", width=20).grid(row=i, column=0,
+                                                                                                       sticky="w")
+                    tk.Label(olevel_frame, text=grade, bg=BG_COLOR, anchor="w").grid(row=i, column=1, sticky="w")
+            else:
+                tk.Label(olevel_frame, text="No O'Level Results Found", bg=BG_COLOR, fg="red").grid(row=0, column=0,
+                                                                                                    columnspan=2,
+                                                                                                    sticky="w")
+        except Exception as e:
+            tk.Label(olevel_frame, text=f"Error loading O'Level data: {str(e)}", bg=BG_COLOR, fg="red").grid(row=0,
+                                                                                                             column=0,
+                                                                                                             columnspan=2,
+                                                                                                             sticky="w")
 
         conn.close()
 
@@ -1323,7 +1398,7 @@ class MainApp:
             return
 
         # Delete from database
-        conn = sqlite3.connect(DB_NAME)
+        conn = sqlite3.connect("students.db")
         cursor = conn.cursor()
         cursor.execute("DELETE FROM students WHERE reg_no=?", (reg_no,))
         conn.commit()
@@ -1349,7 +1424,7 @@ class MainApp:
 
             # Load photo
             reg_no = self.tree.item(selected_item[0])['values'][0]
-            conn = sqlite3.connect(DB_NAME)
+            conn = sqlite3.connect("students.db")
             cursor = conn.cursor()
             cursor.execute("SELECT photo_path FROM students WHERE reg_no=?", (reg_no,))
             row = cursor.fetchone()
@@ -1369,6 +1444,12 @@ class MainApp:
         reg_win.geometry(f"{SCREEN_WIDTH}x{SCREEN_HEIGHT}")
         reg_win.configure(bg=BG_COLOR)
 
+        self.reg_entries = {}
+        self.photo_path = tk.StringVar()
+
+        row = 0
+
+        # --- Biodata Fields ---
         fields = {
             'Registration Number': None,
             'Surname': None,
@@ -1386,41 +1467,35 @@ class MainApp:
             'Year': None
         }
 
-        self.reg_entries = {}
-        self.photo_path = tk.StringVar()
-
-        row = 0
         for label, options in fields.items():
             tk.Label(reg_win, text=label + ':', font=FONT_NORMAL, bg=BG_COLOR).grid(row=row, column=0, sticky='e',
-                                                                                    pady=8, padx=10)
+                                                                                    padx=10, pady=6)
             if isinstance(options, list):
                 cb = ttk.Combobox(reg_win, values=options, font=FONT_NORMAL, state="readonly")
-                cb.grid(row=row, column=1, pady=8, sticky='w')
+                cb.grid(row=row, column=1, sticky='w', pady=6)
                 self.reg_entries[label] = cb
             else:
                 entry = tk.Entry(reg_win, font=FONT_NORMAL)
-                entry.grid(row=row, column=1, pady=8, sticky='w')
+                entry.grid(row=row, column=1, sticky='w', pady=6)
                 self.reg_entries[label] = entry
             row += 1
 
-        # Photo Upload
+        # --- Photo Upload ---
         tk.Label(reg_win, text="Passport Photo:", font=FONT_NORMAL, bg=BG_COLOR).grid(row=row, column=0, sticky='e',
-                                                                                      pady=8)
+                                                                                      pady=6)
         tk.Entry(reg_win, textvariable=self.photo_path, font=FONT_NORMAL, state='readonly').grid(row=row, column=1,
-                                                                                                 pady=8, sticky='w')
+                                                                                                 sticky='w', pady=6)
         tk.Button(reg_win, text="Browse", font=FONT_NORMAL, command=self.browse_photo).grid(row=row, column=2, padx=10)
-
         row += 1
 
-        # Buttons
+        # --- Buttons ---
         btn_frame = tk.Frame(reg_win, bg=BG_COLOR)
         btn_frame.grid(row=row, columnspan=3, pady=20)
 
-        tk.Button(btn_frame, text="Save", font=FONT_NORMAL, command=self.save_registration).grid(row=0, column=0,
-                                                                                                 padx=10)
-        tk.Button(btn_frame, text="Cancel", font=FONT_NORMAL, command=lambda: self.clear_entries()).grid(row=0,
-                                                                                                         column=1,
+        tk.Button(btn_frame, text="Save", font=FONT_NORMAL, command=self.full_student_registration).grid(row=0,
+                                                                                                         column=0,
                                                                                                          padx=10)
+        tk.Button(btn_frame, text="Cancel", font=FONT_NORMAL, command=self.clear_entries).grid(row=0, column=1, padx=10)
         tk.Button(btn_frame, text="Close", font=FONT_NORMAL, command=reg_win.destroy).grid(row=0, column=2, padx=10)
         tk.Button(btn_frame, text="Proceed to O'Level Portal", font=FONT_NORMAL,
                   command=self.olevel_subject_portal).grid(row=0, column=3, padx=10)
@@ -1455,7 +1530,7 @@ class MainApp:
             return
 
         try:
-            conn = sqlite3.connect(DB_NAME)
+            conn = sqlite3.connect("students.db")
             cursor = conn.cursor()
             cursor.execute('''INSERT INTO students (
                                 reg_no, surname, othernames, sex, preferred_course,
@@ -1486,7 +1561,7 @@ class MainApp:
             .grid(row=0, column=0, padx=10, pady=10)
 
         # Fetch registration numbers
-        conn = sqlite3.connect(DB_NAME)
+        conn = sqlite3.connect("students.db")
         cursor = conn.cursor()
         cursor.execute("SELECT reg_no FROM students")
         reg_nos = [row[0] for row in cursor.fetchall()]
@@ -1569,33 +1644,33 @@ class MainApp:
         self.load_candidate_courses_data()
 
     def load_candidate_courses_data(self):
-        # Clear existing treeview content
-        for row in self.candidate_tree.get_children():
-            self.candidate_tree.delete(row)
+        try:
+            # If the Treeview is not defined or destroyed, exit early
+            if not hasattr(self, 'candidate_tree') or not self.candidate_tree.winfo_exists():
+                return
 
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
+            conn = sqlite3.connect("students.db")
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT reg_no, name, preferred_course, predicted_course, admission_status FROM candidate_courses"
+            )
+            rows = cursor.fetchall()
+            conn.close()
 
-        # Join students and admission_results to get complete details
-        cursor.execute("""
-            SELECT s.reg_no,
-                   s.surname || ' ' || s.othernames AS full_name,
-                   s.preferred_course,
-                   a.predicted_course,
-                   a.admission_status
-            FROM students s
-            JOIN admission_results a ON s.reg_no = a.reg_no
-        """)
-        rows = cursor.fetchall()
-        conn.close()
+            # Clear existing rows
+            for row in self.candidate_tree.get_children():
+                self.candidate_tree.delete(row)
 
-        # Insert rows into the Treeview with S/N
-        for idx, row in enumerate(rows, start=1):
-            self.candidate_tree.insert("", "end", values=(idx, *row))
+            # Insert new data
+            for idx, row in enumerate(rows, start=1):
+                self.candidate_tree.insert("", "end", values=(idx, *row))
+
+        except Exception as e:
+            messagebox.showerror("Load Error", f"❌ Could not load data:\n{e}")
 
     def export_candidate_excel(self):
         import pandas as pd
-        conn = sqlite3.connect(DB_NAME)
+        conn = sqlite3.connect("students.db")
         df = pd.read_sql_query("SELECT * FROM candidate_courses", conn)
         df.to_excel("candidate_courses.xlsx", index=False)
         conn.close()
@@ -1604,7 +1679,7 @@ class MainApp:
         from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
         from reportlab.lib import colors
 
-        conn = sqlite3.connect(DB_NAME)
+        conn = sqlite3.connect("students.db")
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM candidate_courses")
         data = cursor.fetchall()
@@ -1627,7 +1702,7 @@ class MainApp:
     def clear_candidate_data(self):
         confirm = messagebox.askyesno("Confirm", "Are you sure you want to clear all candidate course entries?")
         if confirm:
-            conn = sqlite3.connect(DB_NAME)
+            conn = sqlite3.connect("students.db")
             cursor = conn.cursor()
             cursor.execute("DELETE FROM candidate_courses")
             conn.commit()
