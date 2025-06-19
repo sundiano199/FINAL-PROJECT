@@ -875,7 +875,7 @@ class MainApp:
         frame = tk.Frame(win, bg=BG_COLOR)
         frame.pack(fill="both", expand=True)
 
-        # Add "sn" column for Serial Number
+        # Define Treeview columns
         columns = ("sn", "reg_no", "surname", "othernames", "sex", "dob", "nationality", "session", "reg_date", "year")
         self.tree = ttk.Treeview(frame, columns=columns, show="headings", height=25)
 
@@ -908,7 +908,7 @@ class MainApp:
         self.delete_btn = tk.Button(btn_frame, text="Delete", command=self.delete_candidate, state=tk.DISABLED)
         self.delete_btn.grid(row=0, column=3, padx=5)
 
-        import_btn = tk.Button(btn_frame, text="Import File", command=self.import_file_data)
+        import_btn = tk.Button(btn_frame, text="Import File", command=self.import_full_candidate_data)
         import_btn.grid(row=0, column=4, padx=10)
 
         export_btn = tk.Button(btn_frame, text="Export", command=self.export_treeview_data)
@@ -928,24 +928,25 @@ class MainApp:
         self.photo_label.pack(pady=10)
 
         # Load student data into the Treeview
-        self.load_registered_candidates_data()
+        self.load_registered_candidates()
 
-    def load_registered_candidates_data(self):
+    def load_registered_candidates(self):
         conn = sqlite3.connect("students.db")
         cursor = conn.cursor()
-        cursor.execute(
-            "SELECT reg_no, surname, othernames, sex, dob, nationality, session, reg_date, year FROM students")
+
+        # Adjust this SELECT to fetch only needed DB fields
+        cursor.execute("""
+            SELECT reg_no, surname, othernames, sex, dob, nationality, session, reg_date, year
+            FROM students
+        """)
         rows = cursor.fetchall()
         conn.close()
 
-        # Clear old data
-        for item in self.tree.get_children():
-            self.tree.delete(item)
+        self.tree.delete(*self.tree.get_children())  # Clear previous rows
 
-        # Insert with S/N
-        for idx, row in enumerate(rows, start=1):
-            self.tree.insert("", "end", values=(idx, *row))
-
+        for i, row in enumerate(rows, start=1):
+            # Add serial number as first value, then unpack rest of the DB row
+            self.tree.insert("", "end", values=(i, *row))
     def on_select(event):
         selected_item = tree.selection()
         if selected_item:
@@ -1174,6 +1175,110 @@ class MainApp:
         # Insert each row with a serial number
         for idx, row in enumerate(rows, start=1):
             self.tree.insert("", "end", values=(idx, *row))
+
+    def import_full_candidate_data(self):
+        from tkinter import filedialog, messagebox
+        import pandas as pd
+        import sqlite3
+
+        # Ask user to select a file
+        file_path = filedialog.askopenfilename(
+            filetypes=[("CSV Files", "*.csv")],
+            title="Select Full Candidate Data File"
+        )
+        if not file_path:
+            return
+
+        try:
+            df = pd.read_csv(file_path)
+        except Exception as e:
+            messagebox.showerror("File Error", f"Could not read file:\n{e}")
+            return
+
+        # Required columns in the CSV
+        required_columns = [
+            "reg_no", "surname", "othernames", "sex", "dob", "nationality",
+            "session", "reg_date", "year", "preferred_course",
+            "subject1", "grade1", "subject2", "grade2", "subject3", "grade3",
+            "subject4", "grade4", "subject5", "grade5", "subject6", "grade6",
+            "subject7", "grade7", "subject8", "grade8", "subject9", "grade9",
+            "utme_subject1", "utme_score1", "utme_subject2", "utme_score2",
+            "utme_subject3", "utme_score3", "utme_subject4", "utme_score4",
+            "total_utme_score", "post_utme_score"
+        ]
+
+        if not all(col in df.columns for col in required_columns):
+            messagebox.showerror("Format Error", f"CSV file must contain all required columns.")
+            return
+
+        conn = sqlite3.connect("students.db")
+        cursor = conn.cursor()
+        success_count = 0
+
+        for _, row in df.iterrows():
+            try:
+                # --- Insert into students (biodata) ---
+                cursor.execute('''
+                    INSERT OR REPLACE INTO students
+                    (reg_no, surname, othernames, sex, dob, nationality, session, reg_date, year, preferred_course)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    row["reg_no"], row["surname"], row["othernames"], row["sex"], row["dob"],
+                    row["nationality"], row["session"], row["reg_date"], row["year"], row["preferred_course"]
+                ))
+
+                # --- Insert into olevel_results ---
+                cursor.execute('''
+                    INSERT OR REPLACE INTO olevel_results
+                    (reg_no, subject1, grade1, subject2, grade2, subject3, grade3, subject4, grade4,
+                     subject5, grade5, subject6, grade6, subject7, grade7, subject8, grade8, subject9, grade9)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    row["reg_no"],
+                    row["subject1"], row["grade1"], row["subject2"], row["grade2"],
+                    row["subject3"], row["grade3"], row["subject4"], row["grade4"],
+                    row["subject5"], row["grade5"], row["subject6"], row["grade6"],
+                    row["subject7"], row["grade7"], row["subject8"], row["grade8"],
+                    row["subject9"], row["grade9"]
+                ))
+
+                # --- Insert into utme_postutme ---
+                cursor.execute('''
+                    INSERT OR REPLACE INTO utme_postutme
+                    (reg_no, subject1, score1, subject2, score2, subject3, score3,
+                     subject4, score4, total_score, post_utme_score)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    row["reg_no"],
+                    row["utme_subject1"], row["utme_score1"],
+                    row["utme_subject2"], row["utme_score2"],
+                    row["utme_subject3"], row["utme_score3"],
+                    row["utme_subject4"], row["utme_score4"],
+                    row["total_utme_score"], row["post_utme_score"]
+                ))
+
+                # --- Insert into candidate_courses ---
+                cursor.execute('''
+                    INSERT OR REPLACE INTO candidate_courses
+                    (reg_no, name, preferred_course)
+                    VALUES (?, ?, ?)
+                ''', (
+                    row["reg_no"],
+                    row["surname"] + " " + row["othernames"],
+                    row["preferred_course"]
+                ))
+
+                success_count += 1
+            except Exception as e:
+                print(f"Error importing {row['reg_no']}: {e}")
+                continue
+
+        conn.commit()
+        conn.close()
+
+        # Reload treeview
+        self.load_registered_candidates_data()
+        messagebox.showinfo("Import Complete", f"{success_count} candidate records successfully imported.")
 
     def export_treeview_data(self):
         # Get data from Treeview
