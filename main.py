@@ -383,25 +383,32 @@ class MainApp:
         tree.heading("name", text="Name")
         tree.heading("admitted_department", text="Admitted Department")
         tree.column("sn", width=50, anchor="center")
-
         tree.pack(pady=10, fill="both", expand=True)
 
-        # Load data
-        conn = sqlite3.connect("students.db")
-        cursor = conn.cursor()
-        cursor.execute("SELECT reg_no, name, admitted_department FROM predictions")
-        data = cursor.fetchall()
-        conn.close()
+        # Load Admitted Candidates from candidate_courses
+        def load_admitted_candidates():
+            tree.delete(*tree.get_children())
+            conn = sqlite3.connect("students.db")
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT reg_no, name, predicted_course
+                FROM candidate_courses
+                WHERE admission_status = 'Admitted'
+            """)
+            data = cursor.fetchall()
+            conn.close()
 
-        for idx, row in enumerate(data, start=1):
-            tree.insert("", "end", values=(idx, *row))
+            for idx, row in enumerate(data, start=1):
+                tree.insert("", "end", values=(idx, row[0], row[1], row[2]))
 
-        # Filter
+        # Initial load
+        load_admitted_candidates()
+
+        # Filter Frame
         filter_frame = tk.Frame(win, bg=BG_COLOR)
         filter_frame.pack(pady=10)
 
         tk.Label(filter_frame, text="Filter by Department:", font=FONT_NORMAL, bg=BG_COLOR).pack(side="left", padx=10)
-
         departments = [
             "Computer Science", "Physics", "Industrial Chemistry", "Microbiology",
             "Animal and Environmental Biology", "Biochemistry",
@@ -411,31 +418,35 @@ class MainApp:
         dept_combo = ttk.Combobox(filter_frame, textvariable=selected_dept, values=departments, state="readonly")
         dept_combo.pack(side="left", padx=5)
 
-        # Apply Filter Button (smaller size)
-        style = ttk.Style()
-        style.configure("Small.TButton", font=("Helvetica", 9), padding=(6, 4))
-
         def filter_data():
             tree.delete(*tree.get_children())
             conn = sqlite3.connect("students.db")
             cursor = conn.cursor()
-            cursor.execute("SELECT reg_no, name, admitted_department FROM predictions WHERE admitted_department = ?",
-                           (selected_dept.get(),))
+            cursor.execute("""
+                SELECT reg_no, name, predicted_course
+                FROM candidate_courses
+                WHERE admission_status = 'Admitted' AND predicted_course = ?
+            """, (selected_dept.get(),))
             filtered = cursor.fetchall()
             conn.close()
+
             for idx, row in enumerate(filtered, start=1):
-                tree.insert("", "end", values=(idx, *row))
+                tree.insert("", "end", values=(idx, row[0], row[1], row[2]))
 
-        ttk.Button(filter_frame, text="Apply Filter", command=filter_data, style="Small.TButton") \
-            .pack(side="left", pady=0, padx=10)
+        ttk.Style().configure("Small.TButton", font=("Helvetica", 9), padding=(6, 4))
+        ttk.Button(filter_frame, text="Apply Filter", command=filter_data, style="Small.TButton").pack(side="left",
+                                                                                                       padx=10)
 
-        # Action Buttons (Import / Export)
+        # Action Buttons
+        action_frame = tk.Frame(win, bg=BG_COLOR)
+        action_frame.pack(pady=10)
+
         def import_data():
             filename = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
             if filename:
                 with open(filename, newline='') as f:
                     reader = csv.reader(f)
-                    next(reader)  # skip header
+                    next(reader)
                     conn = sqlite3.connect("students.db")
                     cursor = conn.cursor()
                     for row in reader:
@@ -445,7 +456,7 @@ class MainApp:
                     conn.commit()
                     conn.close()
                     messagebox.showinfo("Import", "Data imported successfully!")
-                    self.admitted_candidates_portal()  # Refresh
+                    load_admitted_candidates()
 
         def export_csv():
             filename = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
@@ -454,14 +465,9 @@ class MainApp:
                     writer = csv.writer(f)
                     writer.writerow(["Registration Number", "Name", "Admitted Department"])
                     for item in tree.get_children():
-                        values = tree.item(item)["values"][1:]  # skip S/N
+                        values = tree.item(item)["values"][1:]
                         writer.writerow(values)
                 messagebox.showinfo("Export", "Data exported to CSV successfully!")
-
-            # Define this once (e.g., at the top of your UI setup or just before creating the buttons)
-
-        style = ttk.Style()
-        style.configure("Small.TButton", font=("Helvetica", 9), padding=(6, 4))  # smaller font, less padding
 
         def export_pdf():
             filename = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
@@ -473,7 +479,7 @@ class MainApp:
                 pdf = SimpleDocTemplate(filename, pagesize=letter)
                 data = [["Registration Number", "Name", "Admitted Department"]]
                 for item in tree.get_children():
-                    values = tree.item(item)["values"][1:]  # skip S/N
+                    values = tree.item(item)["values"][1:]
                     data.append(values)
 
                 table = Table(data)
@@ -488,18 +494,18 @@ class MainApp:
                 pdf.build([table])
                 messagebox.showinfo("Export", "Data exported to PDF successfully!")
 
-        # Now define and place the action_frame properly
-        action_frame = tk.Frame(win, bg=BG_COLOR)
-        action_frame.pack(pady=10)
-
-        ttk.Button(action_frame, text="Import CSV", command=import_data, style="Small.TButton") \
-            .grid(row=0, column=0, padx=5)
-        ttk.Button(action_frame, text="Export CSV", command=export_csv, style="Small.TButton") \
-            .grid(row=0, column=1, padx=5)
-        ttk.Button(action_frame, text="Export PDF", command=export_pdf, style="Small.TButton") \
-            .grid(row=0, column=2, padx=5)
-        ttk.Button(action_frame, text="Exit", command=win.destroy, style="Small.TButton") \
-            .grid(row=0, column=3, padx=5)
+        ttk.Button(action_frame, text="Refresh", command=load_admitted_candidates, style="Small.TButton").grid(row=0,
+                                                                                                               column=0,
+                                                                                                               padx=5)
+        ttk.Button(action_frame, text="Import CSV", command=import_data, style="Small.TButton").grid(row=0, column=1,
+                                                                                                     padx=5)
+        ttk.Button(action_frame, text="Export CSV", command=export_csv, style="Small.TButton").grid(row=0, column=2,
+                                                                                                    padx=5)
+        ttk.Button(action_frame, text="Export PDF", command=export_pdf, style="Small.TButton").grid(row=0, column=3,
+                                                                                                    padx=5)
+        ttk.Button(action_frame, text="Clear", command=lambda: tree.delete(*tree.get_children()),
+                   style="Small.TButton").grid(row=0, column=4, padx=5)
+        ttk.Button(action_frame, text="Exit", command=win.destroy, style="Small.TButton").grid(row=0, column=5, padx=5)
 
     def save_changes(self):
         selected = self.tree.focus()
@@ -745,126 +751,111 @@ class MainApp:
             .grid(row=1, column=0, padx=10, pady=(10, 0))
 
     def import_candidate_prediction_data(self):
-        from tkinter import filedialog
         import pandas as pd
         import joblib
         import sqlite3
 
-        # Load trained model
         try:
             model = joblib.load("admission_model.pkl")
         except Exception as e:
             messagebox.showerror("Model Error", f"Failed to load prediction model:\n{e}")
             return
 
-        file_path = filedialog.askopenfilename(
-            filetypes=[("CSV Files", "*.csv"), ("Excel Files", "*.xlsx")],
-            title="Select Candidate Data File"
-        )
-        if not file_path:
-            return
-
         try:
-            if file_path.endswith('.csv'):
-                df = pd.read_csv(file_path)
-            else:
-                df = pd.read_excel(file_path)
-        except Exception as e:
-            messagebox.showerror("File Error", f"Could not read file:\n{e}")
-            return
+            conn = sqlite3.connect("students.db")
+            cursor = conn.cursor()
 
-        required_cols = ['reg_no', 'name', 'preferred_course']
-        if not all(col in df.columns for col in required_cols):
-            messagebox.showerror("Format Error", "File must contain: reg_no, name, preferred_course")
-            return
+            # Fetch candidates from the students table instead
+            cursor.execute("SELECT reg_no, surname || ' ' || othernames AS name, preferred_course FROM students")
+            candidates = cursor.fetchall()
 
-        conn = sqlite3.connect("students.db")
-        cursor = conn.cursor()
-        successful = 0
+            if not candidates:
+                messagebox.showinfo("Info", "No candidates found in students table.")
+                return
 
-        for _, row in df.iterrows():
-            reg_no = row['reg_no']
-            name = row['name']
-            preferred = row['preferred_course']
-
-            # Fetch UTME/Post-UTME scores
-            cursor.execute("SELECT total_score, post_utme_score FROM utme_postutme WHERE reg_no=?", (reg_no,))
-            utme_row = cursor.fetchone()
-            if not utme_row:
-                continue
-            total_utme, post_utme = utme_row
-
-            # Fetch O'Level grades
-            cursor.execute('''
-                SELECT grade1, grade2, grade3, grade4, grade5, grade6, grade7, grade8
-                FROM olevel_results WHERE reg_no=?
-            ''', (reg_no,))
-            olevel_row = cursor.fetchone()
-            if not olevel_row:
-                continue
-
-            # Convert grades to numbers
             grade_map = {
                 "A1": 1, "B2": 2, "B3": 3,
                 "C4": 4, "C5": 5, "C6": 6,
                 "D7": 7, "E8": 8, "F9": 9
             }
-            numeric_grades = [grade_map.get(g.upper(), 9) for g in olevel_row]
 
-            try:
-                # Build features
-                features_df = pd.DataFrame([{
-                    'UTME Score': total_utme,
-                    'Post-UTME Score': post_utme,
-                    'English': numeric_grades[0],
-                    'Maths': numeric_grades[1],
-                    'Physics': numeric_grades[2],
-                    'Chemistry': numeric_grades[3],
-                    'Biology': numeric_grades[4],
-                    'Agric': numeric_grades[5]
-                }])
+            successful = 0
 
-                # Predict
-                predicted_course_encoded = model.predict(features_df)[0]
-                print(f"Predicted value for {reg_no}: {predicted_course_encoded}")
+            for reg_no, name, preferred in candidates:
+                # Fetch UTME & Post-UTME
+                cursor.execute("SELECT total_score, post_utme_score FROM utme_postutme WHERE reg_no=?", (reg_no,))
+                utme_row = cursor.fetchone()
+                if not utme_row:
+                    print(f"No UTME/Post-UTME for {reg_no}")
+                    continue
+                total_utme, post_utme = utme_row
 
-                # Decode course
-                course_map = {
-                    0: "Computer Science",
-                    1: "Microbiology",
-                    2: "Biochemistry",
-                    3: "Physics",
-                    4: "Applied Physics",
-                    5: "Industrial Chemistry",
-                    6: "Mathematics and Statistics",
-                    7: "Animal and Environmental Biology",
-                    8: "Plant Science and Biotechnology"
-                }
-                course_name = course_map.get(predicted_course_encoded, "Unknown")
+                # Fetch O'Level grades
+                cursor.execute("""
+                    SELECT grade1, grade2, grade3, grade4, grade5, grade6
+                    FROM olevel_results WHERE reg_no=?
+                """, (reg_no,))
+                olevel_row = cursor.fetchone()
+                if not olevel_row:
+                    print(f"No O'Level results for {reg_no}")
+                    continue
 
-                # Admission check
-                core_subjects = numeric_grades[0:6]
-                admission_status = "Admitted" if (
-                        total_utme > 200 and post_utme > 60 and all(g <= 6 for g in core_subjects)
-                ) else "Not Admitted"
+                try:
+                    numeric_grades = [grade_map.get(g.upper(), 9) for g in olevel_row]
+                    features_df = pd.DataFrame([{
+                        'UTME Score': total_utme,
+                        'Post-UTME Score': post_utme,
+                        'English': numeric_grades[0],
+                        'Maths': numeric_grades[1],
+                        'Physics': numeric_grades[2],
+                        'Chemistry': numeric_grades[3],
+                        'Biology': numeric_grades[4],
+                        'Agric': numeric_grades[5]
+                    }])
+                except Exception as e:
+                    print(f"Grade conversion failed for {reg_no}: {e}")
+                    continue
 
-                # Save prediction
-                cursor.execute('''
-                    INSERT OR REPLACE INTO candidate_courses
-                    (reg_no, name, preferred_course, predicted_course, admission_status)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (reg_no, name, preferred, course_name, admission_status))
+                try:
+                    prediction = model.predict(features_df)[0]
+                    course_map = {
+                        0: "Computer Science",
+                        1: "Microbiology",
+                        2: "Biochemistry",
+                        3: "Physics",
+                        4: "Applied Physics",
+                        5: "Industrial Chemistry",
+                        6: "Mathematics and Statistics",
+                        7: "Animal and Environmental Biology",
+                        8: "Plant Science and Biotechnology"
+                    }
+                    predicted_course = course_map.get(prediction, "Unknown")
 
-                successful += 1
+                    admission_status = "Admitted" if (
+                            total_utme > 200 and post_utme > 60 and all(g <= 6 for g in numeric_grades)
+                    ) else "Not Admitted"
 
-            except Exception as e:
-                print(f"Prediction error for {reg_no}: {e}")
-                continue
+                    # Save or update in candidate_courses
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO candidate_courses
+                        (reg_no, name, preferred_course, predicted_course, admission_status)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (reg_no, name, preferred, predicted_course, admission_status))
 
-        conn.commit()
-        conn.close()
-        self.load_candidate_courses_data()
-        messagebox.showinfo("Import Complete", f"{successful} candidates successfully imported and predicted.")
+                    successful += 1
+
+                except Exception as e:
+                    print(f"Prediction error for {reg_no}: {e}")
+                    continue
+
+            conn.commit()
+            conn.close()
+
+            self.load_candidate_courses_data()
+            messagebox.showinfo("Prediction Complete", f"{successful} candidates predicted and updated.")
+
+        except Exception as e:
+            messagebox.showerror("Unexpected Error", str(e))
 
     def registered_candidates(self):
         win = tk.Toplevel(self.root)
@@ -920,6 +911,10 @@ class MainApp:
         go_back_btn = tk.Button(btn_frame, text="Exit", command=win.destroy)
         go_back_btn.grid(row=0, column=7, padx=20)
 
+        clear_btn = tk.Button(frame, text="🧹 Clear All", bg="#e74c3c", fg="white", padx=10, pady=5,
+                              command=self.clear_all_candidates)
+        clear_btn.grid(row=2, column=0, pady=10, sticky="e", padx=20)
+
         # Photo display area
         photo_frame = tk.Frame(frame, bg=BG_COLOR)
         photo_frame.grid(row=0, column=2, padx=30, sticky="n")
@@ -929,6 +924,7 @@ class MainApp:
 
         # Load student data into the Treeview
         self.load_registered_candidates()
+
 
     def load_registered_candidates(self):
         conn = sqlite3.connect("students.db")
@@ -947,6 +943,38 @@ class MainApp:
         for i, row in enumerate(rows, start=1):
             # Add serial number as first value, then unpack rest of the DB row
             self.tree.insert("", "end", values=(i, *row))
+
+    def clear_all_candidates(self):
+        from tkinter import messagebox
+        import sqlite3
+
+        confirm = messagebox.askyesno("Confirm Deletion",
+                                      "⚠️ This will permanently delete ALL registered candidates and their scores. Proceed?")
+        if not confirm:
+            return
+
+        try:
+            conn = sqlite3.connect("students.db")
+            cursor = conn.cursor()
+
+            # Clear all related tables
+            cursor.execute("DELETE FROM students")
+            cursor.execute("DELETE FROM olevel_results")
+            cursor.execute("DELETE FROM utme_postutme")
+            cursor.execute("DELETE FROM candidate_courses")
+
+            conn.commit()
+            conn.close()
+
+            # Clear the treeview
+            for item in self.tree.get_children():
+                self.tree.delete(item)
+
+            messagebox.showinfo("Success", "✅ All candidate records cleared successfully.")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"❌ Could not clear records:\n{e}")
+
     def on_select(event):
         selected_item = tree.selection()
         if selected_item:
@@ -1744,6 +1772,8 @@ class MainApp:
         tk.Button(btn_frame, text="Exit", width=15, command=win.destroy).grid(row=0, column=5, padx=10)
         tk.Button(btn_frame, text="Import & Predict", width=15, command=self.import_candidate_prediction_data).grid(
             row=0, column=0, padx=10)
+        tk.Button(btn_frame, text="Predict", width=15, command=self.predict_all_candidates).grid(row=0, column=6,
+                                                                                                 padx=10)
 
         self.predict_admissions()
         self.load_candidate_courses_data()
@@ -1768,7 +1798,15 @@ class MainApp:
 
             # Insert new data
             for idx, row in enumerate(rows, start=1):
-                self.candidate_tree.insert("", "end", values=(idx, *row))
+                reg_no, name, preferred, predicted, status = row
+
+                # Show predicted course if admitted; otherwise show "-"
+                predicted_course_display = predicted if status == "Admitted" else "-"
+
+                self.candidate_tree.insert("", "end", values=(
+                    idx, reg_no, name, preferred, predicted_course_display, status
+                ))
+
 
         except Exception as e:
             messagebox.showerror("Load Error", f"❌ Could not load data:\n{e}")
@@ -1936,17 +1974,200 @@ class MainApp:
             messagebox.showerror("Database Error", str(e))
 
     def perform_prediction(self):
+        import joblib
+        import pandas as pd
+        import sqlite3
+        from tkinter import messagebox
+
         reg_no = self.selected_reg_no.get()
         if not reg_no:
-            messagebox.showerror("Error", "Please select a registration number.")
+            messagebox.showwarning("Missing Info", "Please select a registration number.")
             return
 
-        predicted_courses = ["Computer Science", "Physics", "Industrial Chemistry", "Microbiology",
-                             "Animal and Environmental Biology", "Biochemistry", "Plant Science and Biotechnology",
-                             "Applied Physics", "Mathematics and Statistics"]
-        result = random.choice(predicted_courses)
+        # Load model
+        try:
+            model = joblib.load("admission_model.pkl")
+        except Exception as e:
+            messagebox.showerror("Model Error", f"Could not load model:\n{e}")
+            return
 
-        self.prediction_result.set(f"Predicted Course of Study for {reg_no}: {result}")
+        conn = sqlite3.connect("students.db")
+        cursor = conn.cursor()
+
+        try:
+            # Fetch UTME and Post-UTME scores
+            cursor.execute("SELECT total_score, post_utme_score FROM utme_postutme WHERE reg_no=?", (reg_no,))
+            utme_row = cursor.fetchone()
+            if not utme_row:
+                messagebox.showwarning("Data Missing", "No UTME/Post-UTME scores found for this candidate.")
+                return
+            total_utme, post_utme = utme_row
+
+            # Fetch O'Level grades
+            cursor.execute('''
+                SELECT grade1, grade2, grade3, grade4, grade5, grade6, grade7, grade8
+                FROM olevel_results WHERE reg_no=?
+            ''', (reg_no,))
+            olevel_row = cursor.fetchone()
+            if not olevel_row:
+                messagebox.showwarning("Data Missing", "No O'Level results found for this candidate.")
+                return
+
+            # Map grades to numeric
+            grade_map = {
+                "A1": 1, "B2": 2, "B3": 3,
+                "C4": 4, "C5": 5, "C6": 6,
+                "D7": 7, "E8": 8, "F9": 9
+            }
+            numeric_grades = [grade_map.get(g.upper(), 9) for g in olevel_row]
+
+            # Build input DataFrame
+            features_df = pd.DataFrame([{
+                'UTME Score': total_utme,
+                'Post-UTME Score': post_utme,
+                'English': numeric_grades[0],
+                'Maths': numeric_grades[1],
+                'Physics': numeric_grades[2],
+                'Chemistry': numeric_grades[3],
+                'Biology': numeric_grades[4],
+                'Agric': numeric_grades[5]
+            }])
+
+            # Predict course
+            predicted_encoded = model.predict(features_df)[0]
+
+            # Decode course label
+            course_map = {
+                0: "Computer Science",
+                1: "Microbiology",
+                2: "Biochemistry",
+                3: "Physics",
+                4: "Applied Physics",
+                5: "Industrial Chemistry",
+                6: "Mathematics and Statistics",
+                7: "Animal and Environmental Biology",
+                8: "Plant Science and Biotechnology"
+            }
+            course = course_map.get(predicted_encoded, "Unknown")
+
+            # Check admission status
+            admitted = (
+                    total_utme > 200 and post_utme > 60 and all(g <= 6 for g in numeric_grades[:6])
+            )
+            admission_status = "Admitted" if admitted else "Not Admitted"
+
+            # Get name and preferred course
+            cursor.execute("SELECT surname, othernames FROM students WHERE reg_no=?", (reg_no,))
+            name_row = cursor.fetchone()
+            name = f"{name_row[0]} {name_row[1]}" if name_row else "Unknown"
+
+            cursor.execute("SELECT preferred_course FROM candidate_courses WHERE reg_no=?", (reg_no,))
+            preferred_row = cursor.fetchone()
+            preferred = preferred_row[0] if preferred_row else "N/A"
+
+            # Save to candidate_courses
+            cursor.execute('''
+                INSERT OR REPLACE INTO candidate_courses
+                (reg_no, name, preferred_course, predicted_course, admission_status)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (reg_no, name, preferred, course if admitted else "-", admission_status))
+
+            conn.commit()
+            self.prediction_result.set(f"Predicted Course: {course}\nAdmission Status: {admission_status}")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Prediction failed:\n{e}")
+        finally:
+            conn.close()
+
+    def predict_all_candidates(self):
+        import sqlite3
+        import pandas as pd
+        import joblib
+
+        try:
+            model = joblib.load("admission_model.pkl")
+        except Exception as e:
+            messagebox.showerror("Model Error", f"❌ Failed to load prediction model:\n{e}")
+            return
+
+        conn = sqlite3.connect("students.db")
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT reg_no, surname, othernames, preferred_course FROM students")
+        candidates = cursor.fetchall()
+
+        grade_map = {
+            "A1": 1, "B2": 2, "B3": 3,
+            "C4": 4, "C5": 5, "C6": 6,
+            "D7": 7, "E8": 8, "F9": 9
+        }
+
+        course_map = {
+            0: "Computer Science",
+            1: "Microbiology",
+            2: "Biochemistry",
+            3: "Physics",
+            4: "Applied Physics",
+            5: "Industrial Chemistry",
+            6: "Mathematics and Statistics",
+            7: "Animal and Environmental Biology",
+            8: "Plant Science and Biotechnology"
+        }
+
+        success = 0
+
+        for reg_no, surname, othernames, preferred_course in candidates:
+            cursor.execute("SELECT total_score, post_utme_score FROM utme_postutme WHERE reg_no=?", (reg_no,))
+            utme_row = cursor.fetchone()
+            if not utme_row:
+                continue
+
+            cursor.execute("SELECT grade1, grade2, grade3, grade4, grade5, grade6 FROM olevel_results WHERE reg_no=?",
+                           (reg_no,))
+            olevel_row = cursor.fetchone()
+            if not olevel_row:
+                continue
+
+            try:
+                numeric_grades = [grade_map.get(g.upper(), 9) for g in olevel_row]
+                total_utme, post_utme = utme_row
+
+                features_df = pd.DataFrame([{
+                    'UTME Score': total_utme,
+                    'Post-UTME Score': post_utme,
+                    'English': numeric_grades[0],
+                    'Maths': numeric_grades[1],
+                    'Physics': numeric_grades[2],
+                    'Chemistry': numeric_grades[3],
+                    'Biology': numeric_grades[4],
+                    'Agric': numeric_grades[5]
+                }])
+
+                predicted_course_encoded = model.predict(features_df)[0]
+                predicted_course = course_map.get(predicted_course_encoded, "Unknown")
+
+                admission_status = "Admitted" if (
+                        total_utme > 200 and post_utme > 60 and all(g <= 6 for g in numeric_grades)
+                ) else "Not Admitted"
+
+                name = f"{surname} {othernames}"
+                cursor.execute('''
+                    INSERT OR REPLACE INTO candidate_courses
+                    (reg_no, name, preferred_course, predicted_course, admission_status)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (reg_no, name, preferred_course, predicted_course, admission_status))
+
+                success += 1
+            except Exception as e:
+                print(f"Error predicting for {reg_no}: {e}")
+                continue
+
+        conn.commit()
+        conn.close()
+        self.load_candidate_courses_data()
+        messagebox.showinfo("Prediction Complete", f"✅ {success} candidates updated with predictions.")
+
 
 # --- Initialize App ---
 if __name__ == "__main__":
