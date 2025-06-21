@@ -1373,7 +1373,7 @@ class MainApp:
         if not selected:
             return
 
-        # Dynamically get the correct reg_no from the tree based on column name
+        # Get reg_no from selected Treeview item
         columns = self.tree["columns"]
         try:
             reg_index = columns.index("reg_no")
@@ -1383,8 +1383,7 @@ class MainApp:
 
         reg_no = str(self.tree.item(selected)['values'][reg_index]).strip().upper()
 
-
-        # Correct DB path
+        # Connect to DB
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
         db_path = os.path.join(BASE_DIR, "students.db")
         conn = sqlite3.connect(db_path)
@@ -1406,15 +1405,23 @@ class MainApp:
             """, (reg_no,))
             bio_data = cursor.fetchone()
 
-            labels = ["Full Name:", "Sex:", "Date of Birth:"]
-            if bio_data:
-                for i, label in enumerate(labels[:len(bio_data)]):
-                    value = bio_data[i] if bio_data[i] else "N/A"
-                    tk.Label(bio_frame, text=label, bg=BG_COLOR, anchor="w", width=15).grid(row=i, column=0, sticky="w")
-                    tk.Label(bio_frame, text=value, bg=BG_COLOR, anchor="w").grid(row=i, column=1, sticky="w")
-            else:
-                tk.Label(bio_frame, text="No Bio Data Found", bg=BG_COLOR, fg="red").grid(row=0, column=0, columnspan=2,
-                                                                                          sticky="w")
+            # NEW: Get preferred course and admission status
+            cursor.execute("""
+                SELECT preferred_course, admission_status 
+                FROM candidate_courses WHERE reg_no=?
+            """, (reg_no,))
+            admission_data = cursor.fetchone()
+
+            labels = ["Full Name:", "Sex:", "Date of Birth:", "Registration No.:", "Preferred Course:",
+                      "Admission Status:"]
+            values = list(bio_data if bio_data else ["N/A"] * 3)
+            values.append(reg_no)
+            values.extend(admission_data if admission_data else ["N/A", "N/A"])
+
+            for i, label in enumerate(labels):
+                tk.Label(bio_frame, text=label, bg=BG_COLOR, anchor="w", width=20).grid(row=i, column=0, sticky="w")
+                tk.Label(bio_frame, text=values[i], bg=BG_COLOR, anchor="w").grid(row=i, column=1, sticky="w")
+
         except Exception as e:
             tk.Label(bio_frame, text=f"Error: {str(e)}", bg=BG_COLOR, fg="red").grid(row=0, column=0, columnspan=2,
                                                                                      sticky="w")
@@ -1450,14 +1457,11 @@ class MainApp:
                 tk.Label(scores_frame, text=scores_data[9] or "N/A", bg=BG_COLOR, anchor="w").grid(row=5, column=1,
                                                                                                    sticky="w")
             else:
-                tk.Label(scores_frame, text="No UTME/Post-UTME scores found", bg=BG_COLOR, fg="red").grid(row=0,
-                                                                                                          column=0,
-                                                                                                          columnspan=2,
-                                                                                                          sticky="w")
+                tk.Label(scores_frame, text="No UTME/Post-UTME scores found", bg=BG_COLOR, fg="red") \
+                    .grid(row=0, column=0, columnspan=2, sticky="w")
         except Exception as e:
-            tk.Label(scores_frame, text=f"Error loading scores: {str(e)}", bg=BG_COLOR, fg="red").grid(row=0, column=0,
-                                                                                                       columnspan=2,
-                                                                                                       sticky="w")
+            tk.Label(scores_frame, text=f"Error loading scores: {str(e)}", bg=BG_COLOR, fg="red") \
+                .grid(row=0, column=0, columnspan=2, sticky="w")
 
         # ========== O'Level Results ==========
         olevel_frame = tk.LabelFrame(profile_win, text="O'Level Results", bg=BG_COLOR, padx=10, pady=10)
@@ -1480,14 +1484,11 @@ class MainApp:
                                                                                                        sticky="w")
                     tk.Label(olevel_frame, text=grade, bg=BG_COLOR, anchor="w").grid(row=i, column=1, sticky="w")
             else:
-                tk.Label(olevel_frame, text="No O'Level Results Found", bg=BG_COLOR, fg="red").grid(row=0, column=0,
-                                                                                                    columnspan=2,
-                                                                                                    sticky="w")
+                tk.Label(olevel_frame, text="No O'Level Results Found", bg=BG_COLOR, fg="red") \
+                    .grid(row=0, column=0, columnspan=2, sticky="w")
         except Exception as e:
-            tk.Label(olevel_frame, text=f"Error loading O'Level data: {str(e)}", bg=BG_COLOR, fg="red").grid(row=0,
-                                                                                                             column=0,
-                                                                                                             columnspan=2,
-                                                                                                             sticky="w")
+            tk.Label(olevel_frame, text=f"Error loading O'Level data: {str(e)}", bg=BG_COLOR, fg="red") \
+                .grid(row=0, column=0, columnspan=2, sticky="w")
 
         conn.close()
 
