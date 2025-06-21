@@ -7,14 +7,13 @@ import sqlite3
 from PIL import Image, ImageTk
 import os
 import random
-import pandas as pd
 from tkinter import filedialog, messagebox
 import tempfile
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 import joblib
-
+import customtkinter as ctk
 
 
 
@@ -47,6 +46,7 @@ FONT_HEADER = ("Segoe UI", 24, "bold")     # Big titles
 FONT_MEDIUM = ("Segoe UI", 16, "bold")     # Section headers like "Welcome..."
 FONT_NORMAL = ("Segoe UI", 12)             # Labels/entries
 BUTTON_FONT = ("Segoe UI", 14, "bold")
+LARGE_FONT = ("Helvetica", 20, "bold")
 
 
 # ✅ Step 1: Load data
@@ -224,17 +224,15 @@ class MainApp:
         filemenu.add_command(label="Candidate Courses Portal", command=self.view_candidate_courses)
 
         menubar.add_cascade(label="Shortcuts", menu=filemenu)
-
-
         root.config(menu=menubar)
 
         # --- Dashboard Heading ---
         heading_frame = tk.Frame(root, bg=BG_COLOR)
-        heading_frame.pack(pady=60)
+        heading_frame.pack(pady=50)
 
         tk.Label(
             heading_frame,
-            text="FACULTY OF APPLIED SCIENCE",
+            text="FACULTY OF SCIENCE ADMISSION SYSTEM",
             font=FONT_HEADER,
             bg=BG_COLOR,
             fg="#FFFFFF"
@@ -243,54 +241,57 @@ class MainApp:
         tk.Label(
             heading_frame,
             text="ADMIN DASHBOARD",
-            font=FONT_HEADER,
+            font=("Helvetica", 20, "bold"),
             bg=BG_COLOR,
             fg="#FFFFFF"
         ).pack()
 
-        tk.Label(
-            root,
-            text="Welcome, what will you like to do?",
-            font=FONT_MEDIUM,
-            bg=BG_COLOR,
-            fg="#F3DCC3"
-        ).pack(pady=20)
-
         # --- Buttons ---
         btn_frame = tk.Frame(root, bg=BG_COLOR)
-        btn_frame.pack(pady=30)
+        btn_frame.pack(pady=10)
 
-        style = ttk.Style()
-        style.theme_use("clam")
-        style.configure("TButton",
-                        font=BUTTON_FONT,
-                        padding=(30, 20),
-                        borderwidth=0,
-                        background="#0269FE",
-                        foreground="#FFFFFF")
-        style.map("TButton",
-                  background=[("active", "#0047A0")],
-                  relief=[("pressed", "flat")])
+        ctk.set_appearance_mode("light")
+        ctk.set_default_color_theme("blue")
 
-        ttk.Button(btn_frame, text="Fresh Applicant Registration", command=self.student_registration)\
-            .grid(row=0, column=0, padx=70, pady=30)
+        button_style = {
+            "master": btn_frame,
+            "corner_radius": 5,
+            "width": 500,
+            "height": 100,
+            "font": ("Helvetica", 20, "bold"),
+            "fg_color": "#0269FE",
+            "hover_color": "#0047A0",
+            "text_color": "white"
+        }
 
-        ttk.Button(btn_frame, text="View Registered Candidates", command=self.registered_candidates)\
-            .grid(row=0, column=1, padx=70, pady=30)
+        ctk.CTkButton(btn_frame, text="Fresh Applicant Registration",
+                      command=self.student_registration,
+                      corner_radius=15, fg_color="#0269FE", text_color="white",
+                      font=LARGE_FONT, width=300, height=60) \
+            .grid(row=0, column=0, pady=12)
 
-        ttk.Button(btn_frame, text="Course Prediction / Admission Portal", command=self.prediction_portal)\
-            .grid(row=1, column=0, padx=70, pady=30)
+        ctk.CTkButton(btn_frame, text="View Registered Candidates",
+                      command=self.registered_candidates,
+                      corner_radius=15, fg_color="#0269FE", text_color="white",
+                      font=LARGE_FONT, width=300, height=60) \
+            .grid(row=1, column=0, pady=12)
 
-        ttk.Button(btn_frame, text="Admitted Candidates Portal", command=self.admitted_candidates_portal) \
-            .grid(row=1, column=1, padx=70, pady=30)
+        ctk.CTkButton(btn_frame, text="Prediction/Admission Portal",
+                      command=self.prediction_portal,
+                      corner_radius=15, fg_color="#0269FE", text_color="white",
+                      font=LARGE_FONT, width=300, height=60) \
+            .grid(row=2, column=0, pady=12)
+
+        ctk.CTkButton(btn_frame, text="Admitted Candidates Portal",
+                      command=self.admitted_candidates_portal,
+                      corner_radius=15, fg_color="#0269FE", text_color="white",
+                      font=LARGE_FONT, width=300, height=60) \
+            .grid(row=3, column=0, pady=12)
 
         # --- Styled Logout Button at Top-Right ---
-        style.configure("Logout.TButton", font=("Helvetica", 9), padding=(5, 2),
-                        background="#F3E5AB", foreground="#000000")
-        style.map("Logout.TButton",
-                  background=[("active", "#E0D3A4")])
-
-        logout_btn = ttk.Button(self.root, text="🔒 Logout", command=self.logout, style="Logout.TButton")
+        logout_btn = ctk.CTkButton(self.root, text="🔒 Logout", command=self.logout,
+                                   width=100, height=30, font=("Helvetica", 12), corner_radius=6,
+                                   fg_color="#F3E5AB", hover_color="#E0D3A4", text_color="#000000")
         logout_btn.place(relx=0.98, rely=0.02, anchor="ne")  # Positioned top-right
 
     # Grade map
@@ -299,6 +300,7 @@ class MainApp:
         "C4": 5, "C5": 4, "C6": 3,
         "D7": 2, "E8": 1, "F9": 0
     }
+
 
     def full_student_registration(self):
         import sqlite3
