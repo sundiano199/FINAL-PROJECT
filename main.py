@@ -785,11 +785,12 @@ class MainApp:
         import joblib
         import sqlite3
 
-        # Load trained model
+        # Load trained model and label encoder
         try:
             model = joblib.load("admission_model.pkl")
+            le = joblib.load("label_encoder.pkl")
         except Exception as e:
-            messagebox.showerror("Model Error", f"Failed to load prediction model:\n{e}")
+            messagebox.showerror("Model Error", f"Failed to load model or encoder:\n{e}")
             return
 
         file_path = filedialog.askopenfilename(
@@ -800,10 +801,7 @@ class MainApp:
             return
 
         try:
-            if file_path.endswith('.csv'):
-                df = pd.read_csv(file_path)
-            else:
-                df = pd.read_excel(file_path)
+            df = pd.read_csv(file_path) if file_path.endswith('.csv') else pd.read_excel(file_path)
         except Exception as e:
             messagebox.showerror("File Error", f"Could not read file:\n{e}")
             return
@@ -817,17 +815,10 @@ class MainApp:
         cursor = conn.cursor()
         successful = 0
 
-        # Course encoding/decoding
-        course_map = {
-            0: "Computer Science",
-            1: "Microbiology",
-            2: "Biochemistry",
-            3: "Physics",
-            4: "Applied Physics",
-            5: "Industrial Chemistry",
-            6: "Mathematics and Statistics",
-            7: "Animal and Environmental Biology",
-            8: "Plant Science and Biotechnology"
+        grade_map = {
+            "A1": 8, "B2": 7, "B3": 6,
+            "C4": 5, "C5": 4, "C6": 3,
+            "D7": 2, "E8": 1, "F9": 0
         }
 
         for _, row in df.iterrows():
@@ -835,36 +826,28 @@ class MainApp:
             name = row['name']
             preferred = row['preferred_course']
 
-            # Fetch UTME/Post-UTME scores
+            # Fetch scores
             cursor.execute("SELECT total_score, post_utme_score FROM utme_postutme WHERE reg_no=?", (reg_no,))
             utme_row = cursor.fetchone()
             if not utme_row:
                 continue
             total_utme, post_utme = utme_row
 
-            # Fetch O'Level grades
-            cursor.execute('''
+            # Fetch O'Level results
+            cursor.execute("""
                 SELECT grade1, grade2, grade3, grade4, grade5, grade6, grade7, grade8
                 FROM olevel_results WHERE reg_no=?
-            ''', (reg_no,))
+            """, (reg_no,))
             olevel_row = cursor.fetchone()
             if not olevel_row:
                 continue
 
-            # Convert grades to numbers
-            grade_map = {
-                "A1": 1, "B2": 2, "B3": 3,
-                "C4": 4, "C5": 5, "C6": 6,
-                "D7": 7, "E8": 8, "F9": 9
-            }
-            numeric_grades = [grade_map.get(str(g).upper(), 9) for g in olevel_row]
-            core_subjects = numeric_grades[0:6]  # First 6 subjects
+            numeric_grades = [grade_map.get(str(g).upper(), 0) for g in olevel_row]
 
             try:
-                # Build features
                 features_df = pd.DataFrame([{
-                    'UTME Score': total_utme,
-                    'Post-UTME Score': post_utme,
+                    'UTME': total_utme,
+                    'Post-UTME': post_utme,
                     'English': numeric_grades[0],
                     'Maths': numeric_grades[1],
                     'Physics': numeric_grades[2],
@@ -873,33 +856,25 @@ class MainApp:
                     'Agric': numeric_grades[5]
                 }])
 
-                # Model prediction (if needed)
-                model_predicted_course = course_map.get(model.predict(features_df)[0], "Unknown")
+                predicted_code = model.predict(features_df)[0]
+                predicted_course = le.inverse_transform([predicted_code])[0]
 
-                # Check if candidate qualifies for preferred course
-                qualifies_for_preferred = (
+                qualifies = (
                         total_utme > 200 and
                         post_utme > 60 and
-                        all(g <= 6 for g in core_subjects)
+                        all(g >= 3 for g in numeric_grades[:6])
                 )
 
-                # Use preferred course if qualified, else fallback to prediction
-                final_course = preferred if qualifies_for_preferred else model_predicted_course
-
-                # Admission decision
-                admission_status = "Admitted" if qualifies_for_preferred or final_course == model_predicted_course else "Not Admitted"
-
-                # If not admitted, show "-" in course
+                final_course = preferred if qualifies else predicted_course
+                admission_status = "Admitted" if qualifies or final_course == predicted_course else "Not Admitted"
                 if admission_status == "Not Admitted":
                     final_course = "-"
 
-                # Save to DB
-                cursor.execute('''
+                cursor.execute("""
                     INSERT OR REPLACE INTO candidate_courses
                     (reg_no, name, preferred_course, predicted_course, admission_status)
                     VALUES (?, ?, ?, ?, ?)
-                ''', (reg_no, name, preferred, final_course, admission_status))
-
+                """, (reg_no, name, preferred, final_course, admission_status))
                 successful += 1
 
             except Exception as e:
