@@ -68,24 +68,12 @@ for subject in subjects:
 
 # ✅ Step 3: Encode the Predicted Course column
 le = LabelEncoder()
-df['Preferred Course'] = df['Preferred Course'].astype(str)  # Ensure no NaNs
-df['Preferred Course Encoded'] = le.fit_transform(df['Preferred Course'])
+df['admitted_department'] = df['admitted_department'].astype(str)  # make sure it's clean
+df['department_encoded'] = le.fit_transform(df['admitted_department'])
 
+X = df[['UTME', 'Post-UTME', 'English', 'Maths', 'Physics', 'Chemistry', 'Biology', 'Agric']]
+y = df['department_encoded']
 
-# ✅ Step 4: Define features (X) and target (y)
-X = df[['UTME Score', 'Post-UTME Score', 'English', 'Maths', 'Physics', 'Chemistry', 'Biology', 'Agric']]
-y = df['Preferred Course Encoded']
-
-# ✅ Step 5: Train the model
-model = RandomForestClassifier(n_estimators=100, random_state=42)
-model.fit(X, y)
-
-# ✅ Step 6: Save model and label encoder
-joblib.dump(model, "admission_model.pkl")
-joblib.dump(le, "label_encoder.pkl")
-
-print("✅ Model trained and saved as 'admission_model.pkl' and 'label_encoder.pkl'")
-# --- Database Setup ---
 def initialize_db():
     conn = sqlite3.connect("students.db")
     cursor = conn.cursor()
@@ -340,22 +328,30 @@ class MainApp:
 
     def predict_course(candidate_data):
         try:
-            # Extract and transform grades and scores
+            # Define the grade mapping
+            grade_map = {
+                "A1": 8, "B2": 7, "B3": 6,
+                "C4": 5, "C5": 4, "C6": 3,
+                "D7": 2, "E8": 1, "F9": 0
+            }
+
+            # Prepare input in the same order used during training
             X_input = [[
+                int(candidate_data['UTME']),
+                float(candidate_data['Post_UTME']),
                 grade_map.get(candidate_data['English'], 0),
                 grade_map.get(candidate_data['Maths'], 0),
                 grade_map.get(candidate_data['Physics'], 0),
                 grade_map.get(candidate_data['Chemistry'], 0),
                 grade_map.get(candidate_data['Biology'], 0),
-                grade_map.get(candidate_data['Agric'], 0),
-                int(candidate_data['UTME']),
-                float(candidate_data['Post_UTME'])
+                grade_map.get(candidate_data['Agric'], 0)
             ]]
 
+            # Predict department
             prediction = model.predict(X_input)[0]
-            predicted_course = label_encoder.inverse_transform([prediction])[0]
+            predicted_department = label_encoder.inverse_transform([prediction])[0]
 
-            # Admission Rule Logic
+            # Admission logic rule
             utme_score = int(candidate_data['UTME'])
             post_utme_score = float(candidate_data['Post_UTME'])
             if utme_score > 200 and post_utme_score > 60:
@@ -363,7 +359,7 @@ class MainApp:
             else:
                 admission_status = "Not Admitted"
 
-            return predicted_course, admission_status
+            return predicted_department, admission_status
 
         except Exception as e:
             print("Prediction error:", e)
@@ -1411,7 +1407,6 @@ class MainApp:
             messagebox.showwarning("No Selection", "Please select a candidate from the list.")
             return
 
-        # Get reg_no from selected Treeview item
         columns = self.tree["columns"]
         try:
             reg_index = columns.index("reg_no")
@@ -1425,16 +1420,37 @@ class MainApp:
         self.current_frame = tk.Frame(self.root, bg=BG_COLOR)
         self.current_frame.pack(fill="both", expand=True)
 
-        tk.Label(self.current_frame, text=f"Candidate Full Profile - {reg_no}", font=FONT_HEADER, bg=BG_COLOR).pack(
-            pady=20)
+        # === SCROLLABLE CANVAS IN THIS PAGE ONLY ===
+        canvas = tk.Canvas(self.current_frame, bg=BG_COLOR)
+        canvas.pack(side="left", fill="both", expand=True)
+
+        scrollbar = tk.Scrollbar(self.current_frame, orient="vertical", command=canvas.yview)
+        scrollbar.pack(side="right", fill="y")
+
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        scrollable_frame = tk.Frame(canvas, bg=BG_COLOR)
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+
+        def on_frame_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        scrollable_frame.bind("<Configure>", on_frame_configure)
+        canvas.bind("<MouseWheel>", lambda event: canvas.yview_scroll(int(-1 * (event.delta / 120)), "units"))
+
+
+        # === PAGE CONTENT BELOW ===
+
+        tk.Label(scrollable_frame, text=f"Candidate Full Profile - {reg_no}", font=FONT_HEADER, bg=BG_COLOR).pack(
+            pady=10)
 
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
         db_path = os.path.join(BASE_DIR, "students.db")
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
-        # ========== Bio Data ==========
-        bio_frame = tk.LabelFrame(self.current_frame, text="Bio Data", bg=BG_COLOR, padx=10, pady=10)
+        # === Bio Data ===
+        bio_frame = tk.LabelFrame(scrollable_frame, text="Bio Data", bg=BG_COLOR, padx=10, pady=10)
         bio_frame.pack(fill="x", padx=20, pady=10)
 
         try:
@@ -1463,36 +1479,27 @@ class MainApp:
             tk.Label(bio_frame, text=f"Error: {str(e)}", bg=BG_COLOR, fg="red").grid(row=0, column=0, columnspan=2,
                                                                                      sticky="w")
 
-        # ========== UTME/POST-UTME ==========
-        scores_frame = tk.LabelFrame(self.current_frame, text="UTME and Post-UTME Scores", bg=BG_COLOR, padx=10,
-                                     pady=10)
+        # === UTME and Post-UTME Scores ===
+        scores_frame = tk.LabelFrame(scrollable_frame, text="UTME and Post-UTME Scores", bg=BG_COLOR, padx=10, pady=10)
         scores_frame.pack(fill="x", padx=20, pady=10)
 
         try:
             cursor.execute("""
-                SELECT subject1, score1, subject2, score2, subject3, score3, subject4, score4,
-                       total_score, post_utme_score
+                SELECT total_score, post_utme_score
                 FROM utme_postutme WHERE reg_no=?
             """, (reg_no,))
             scores_data = cursor.fetchone()
 
             if scores_data:
-                for i in range(4):
-                    subj = scores_data[i * 2] or "N/A"
-                    score = scores_data[i * 2 + 1] or "N/A"
-                    tk.Label(scores_frame, text=f"{subj}:", bg=BG_COLOR, anchor="w", width=20).grid(row=i, column=0,
-                                                                                                    sticky="w")
-                    tk.Label(scores_frame, text=score, bg=BG_COLOR, anchor="w").grid(row=i, column=1, sticky="w")
-
-                tk.Label(scores_frame, text="Total UTME Score:", bg=BG_COLOR, anchor="w", width=20).grid(row=4,
+                tk.Label(scores_frame, text="Total UTME Score:", bg=BG_COLOR, anchor="w", width=20).grid(row=0,
                                                                                                          column=0,
                                                                                                          sticky="w")
-                tk.Label(scores_frame, text=scores_data[8] or "N/A", bg=BG_COLOR, anchor="w").grid(row=4, column=1,
+                tk.Label(scores_frame, text=scores_data[0] or "N/A", bg=BG_COLOR, anchor="w").grid(row=0, column=1,
                                                                                                    sticky="w")
 
-                tk.Label(scores_frame, text="Post-UTME Score:", bg=BG_COLOR, anchor="w", width=20).grid(row=5, column=0,
+                tk.Label(scores_frame, text="Post-UTME Score:", bg=BG_COLOR, anchor="w", width=20).grid(row=1, column=0,
                                                                                                         sticky="w")
-                tk.Label(scores_frame, text=scores_data[9] or "N/A", bg=BG_COLOR, anchor="w").grid(row=5, column=1,
+                tk.Label(scores_frame, text=scores_data[1] or "N/A", bg=BG_COLOR, anchor="w").grid(row=1, column=1,
                                                                                                    sticky="w")
             else:
                 tk.Label(scores_frame, text="No UTME/Post-UTME scores found", bg=BG_COLOR, fg="red").grid(row=0,
@@ -1504,8 +1511,8 @@ class MainApp:
                                                                                                        columnspan=2,
                                                                                                        sticky="w")
 
-        # ========== O'Level ==========
-        olevel_frame = tk.LabelFrame(self.current_frame, text="O'Level Results", bg=BG_COLOR, padx=10, pady=10)
+        # === O'Level Results ===
+        olevel_frame = tk.LabelFrame(scrollable_frame, text="O'Level Results", bg=BG_COLOR, padx=10, pady=10)
         olevel_frame.pack(fill="x", padx=20, pady=10)
 
         try:
@@ -1536,10 +1543,9 @@ class MainApp:
 
         conn.close()
 
-        # Back button
-        tk.Button(self.current_frame, text="Back to Registered Candidates", command=self.registered_candidates).pack(
+        # === Back Button ===
+        tk.Button(scrollable_frame, text="Back to Registered Candidates", command=self.registered_candidates).pack(
             pady=20)
-
 
     def delete_candidate(self):
         selected = self.tree.focus()
@@ -1816,7 +1822,7 @@ class MainApp:
         tk.Button(btn_frame, text="Back to Dashboard", width=15, command=self.show_main_menu) \
             .grid(row=0, column=6, padx=10)
 
-        self.predict_admissions()
+        self.predict_all_candidates()
         self.load_candidate_courses_data()
 
     def load_candidate_courses_data(self):
@@ -2034,7 +2040,6 @@ class MainApp:
             messagebox.showerror("Selection Error", "Please select a registration number.")
             return
 
-        # Load trained model
         try:
             model = joblib.load("admission_model.pkl")
         except Exception as e:
@@ -2044,90 +2049,150 @@ class MainApp:
         conn = sqlite3.connect("students.db")
         cursor = conn.cursor()
 
-        # Fetch name and preferred course
-        cursor.execute("SELECT surname, othernames FROM students WHERE reg_no=?", (reg_no,))
-        name_row = cursor.fetchone()
-        if not name_row:
-            messagebox.showerror("Data Error", "Student data not found.")
-            return
-        name = f"{name_row[0]} {name_row[1]}"
-
-        cursor.execute("SELECT preferred_course FROM candidate_courses WHERE reg_no=?", (reg_no,))
-        preferred_row = cursor.fetchone()
-        preferred = preferred_row[0] if preferred_row else "Unknown"
-
-        # Fetch scores
-        cursor.execute("SELECT total_score, post_utme_score FROM utme_postutme WHERE reg_no=?", (reg_no,))
-        utme_row = cursor.fetchone()
-        if not utme_row:
-            messagebox.showerror("Data Error", "UTME/Post-UTME scores not found.")
-            return
-        total_utme, post_utme = utme_row
-
-        # Fetch O'Level grades
-        cursor.execute('''
-            SELECT grade1, grade2, grade3, grade4, grade5, grade6, grade7, grade8
-            FROM olevel_results WHERE reg_no=?
-        ''', (reg_no,))
-        olevel_row = cursor.fetchone()
-        if not olevel_row:
-            messagebox.showerror("Data Error", "O'Level results not found.")
-            return
-
-        # Convert grades
-        grade_map = {
-            "A1": 1, "B2": 2, "B3": 3,
-            "C4": 4, "C5": 5, "C6": 6,
-            "D7": 7, "E8": 8, "F9": 9
+        # Load label encoder (optional if needed)
+        course_map = {
+            0: "Computer Science",
+            1: "Microbiology",
+            2: "Biochemistry",
+            3: "Physics",
+            4: "Applied Physics",
+            5: "Industrial Chemistry",
+            6: "Mathematics and Statistics",
+            7: "Animal and Environmental Biology",
+            8: "Plant Science and Biotechnology"
         }
-        numeric_grades = [grade_map.get(str(g).upper(), 9) for g in olevel_row]
-        core_subjects = numeric_grades[0:6]
+
+        course_priority = list(course_map.values())
+
+        # Define course requirements
+        course_requirements = {
+            "Computer Science": {"utme": 240, "post_utme": 75,
+                                 "required": ["English", "Maths", "Physics"],
+                                 "optional": {"choices": ["Biology", "Chemistry", "Agric"], "min_passes": 2},
+                                 "max_grade": 6},
+            "Microbiology": {"utme": 230, "post_utme": 70,
+                             "required": ["English", "Maths", "Biology", "Agric"],
+                             "optional": {"choices": ["Physics", "Chemistry"], "min_passes": 1},
+                             "max_grade": 6},
+            "Biochemistry": {"utme": 225, "post_utme": 70,
+                             "required": ["English", "Maths", "Chemistry", "Biology"],
+                             "optional": {"choices": ["Physics", "Agric"], "min_passes": 1},
+                             "max_grade": 6},
+            "Physics": {"utme": 220, "post_utme": 68,
+                        "required": ["English", "Maths", "Physics", "Chemistry"],
+                        "optional": {"choices": ["Biology", "Agric"], "min_passes": 1},
+                        "max_grade": 6},
+            "Applied Physics": {"utme": 215, "post_utme": 66,
+                                "required": ["English", "Maths", "Physics", "Chemistry"],
+                                "optional": {"choices": ["Biology", "Agric"], "min_passes": 1},
+                                "max_grade": 6},
+            "Industrial Chemistry": {"utme": 210, "post_utme": 65,
+                                     "required": ["English", "Maths", "Physics", "Chemistry"],
+                                     "optional": {"choices": ["Agric", "Biology"], "min_passes": 1},
+                                     "max_grade": 6},
+            "Mathematics and Statistics": {"utme": 205, "post_utme": 65,
+                                           "required": ["English", "Maths", "Physics", "Chemistry"],
+                                           "optional": {"choices": ["Agric", "Biology"], "min_passes": 1},
+                                           "max_grade": 6},
+            "Animal and Environmental Biology": {"utme": 203, "post_utme": 60,
+                                                 "required": ["English", "Maths", "Agric", "Biology"],
+                                                 "optional": {"choices": ["Physics", "Chemistry"], "min_passes": 1},
+                                                 "max_grade": 6},
+            "Plant Science and Biotechnology": {"utme": 200, "post_utme": 60,
+                                                "required": ["English", "Maths", "Agric", "Biology"],
+                                                "optional": {"choices": ["Physics", "Chemistry"], "min_passes": 1},
+                                                "max_grade": 6}
+        }
 
         try:
+            # Fetch student data
+            cursor.execute("SELECT surname, othernames FROM students WHERE reg_no=?", (reg_no,))
+            row = cursor.fetchone()
+            if not row:
+                raise ValueError("Student biodata not found.")
+            name = f"{row[0]} {row[1]}"
+
+            cursor.execute("SELECT preferred_course FROM candidate_courses WHERE reg_no=?", (reg_no,))
+            preferred_row = cursor.fetchone()
+            preferred = preferred_row[0] if preferred_row else "Unknown"
+
+            cursor.execute("SELECT total_score, post_utme_score FROM utme_postutme WHERE reg_no=?", (reg_no,))
+            utme_row = cursor.fetchone()
+            if not utme_row:
+                raise ValueError("UTME/Post-UTME scores not found.")
+            utme, post_utme = utme_row
+
+            cursor.execute(
+                "SELECT subject1, grade1, subject2, grade2, subject3, grade3, subject4, grade4, subject5, grade5, subject6, grade6 FROM olevel_results WHERE reg_no=?",
+                (reg_no,))
+            olevel_row = cursor.fetchone()
+            if not olevel_row:
+                raise ValueError("O'Level results not found.")
+
+            grade_map = {
+                "A1": 1, "B2": 2, "B3": 3,
+                "C4": 4, "C5": 5, "C6": 6,
+                "D7": 7, "E8": 8, "F9": 9
+            }
+
+            subjects = [olevel_row[i] for i in range(0, len(olevel_row), 2)]
+            grades = [grade_map.get(olevel_row[i + 1].upper(), 9) for i in range(0, len(olevel_row), 2)]
+            subject_grade_map = dict(zip(subjects, grades))
+
             features_df = pd.DataFrame([{
-                'UTME Score': total_utme,
-                'Post-UTME Score': post_utme,
-                'English': numeric_grades[0],
-                'Maths': numeric_grades[1],
-                'Physics': numeric_grades[2],
-                'Chemistry': numeric_grades[3],
-                'Biology': numeric_grades[4],
-                'Agric': numeric_grades[5]
+                'UTME': utme,
+                'Post-UTME': post_utme,
+                'English': subject_grade_map.get("English", 9),
+                'Maths': subject_grade_map.get("Maths", 9),
+                'Physics': subject_grade_map.get("Physics", 9),
+                'Chemistry': subject_grade_map.get("Chemistry", 9),
+                'Biology': subject_grade_map.get("Biology", 9),
+                'Agric': subject_grade_map.get("Agric", 9)
             }])
 
-            # Predict course if not qualified for preferred
-            model_predicted_course = joblib.load("admission_model.pkl").predict(features_df)[0]
+            ml_prediction_index = model.predict(features_df)[0]
+            ml_prediction = course_map.get(ml_prediction_index, "Unknown")
 
-            course_map = {
-                0: "Computer Science",
-                1: "Microbiology",
-                2: "Biochemistry",
-                3: "Physics",
-                4: "Applied Physics",
-                5: "Industrial Chemistry",
-                6: "Mathematics and Statistics",
-                7: "Animal and Environmental Biology",
-                8: "Plant Science and Biotechnology"
-            }
-            predicted_course = course_map.get(model_predicted_course, "Unknown")
+            # Check course eligibility
+            def meets_requirements(course):
+                reqs = course_requirements.get(course)
+                if not reqs:
+                    return False
+                if utme < reqs["utme"] or post_utme < reqs["post_utme"]:
+                    return False
+                for sub in reqs["required"]:
+                    if subject_grade_map.get(sub, 9) > reqs["max_grade"]:
+                        return False
+                optional_passes = sum(1 for sub in reqs["optional"]["choices"]
+                                      if subject_grade_map.get(sub, 9) <= reqs["max_grade"])
+                return optional_passes >= reqs["optional"]["min_passes"]
 
-            # Final decision
-            qualifies = total_utme > 200 and post_utme > 60 and all(g <= 6 for g in core_subjects)
-            final_course = preferred if qualifies else predicted_course
-            admission_status = "Admitted" if qualifies or final_course == predicted_course else "Not Admitted"
-            if admission_status == "Not Admitted":
-                final_course = "-"
+            # Priority 1: Preferred course (if qualified)
+            if meets_requirements(preferred):
+                predicted_course = preferred
+                admission_status = "Admitted"
+            # Priority 2: ML prediction (if qualified)
+            elif meets_requirements(ml_prediction):
+                predicted_course = ml_prediction
+                admission_status = "Admitted"
+            # Priority 3: Fallback to lower-ranked valid course
+            else:
+                fallback = "-"
+                for course in course_priority:
+                    if meets_requirements(course):
+                        fallback = course
+                        break
+                predicted_course = fallback
+                admission_status = "Admitted" if fallback != "-" else "Not Admitted"
 
-            self.prediction_result.set(
-                f"Predicted Course: {final_course}\nAdmission Status: {admission_status}"
-            )
+            self.prediction_result.set(f"Predicted Course: {predicted_course}\nAdmission Status: {admission_status}")
 
-            # Update DB
+            # Update database
             cursor.execute('''
                 INSERT OR REPLACE INTO candidate_courses
                 (reg_no, name, preferred_course, predicted_course, admission_status)
                 VALUES (?, ?, ?, ?, ?)
-            ''', (reg_no, name, preferred, final_course, admission_status))
+            ''', (reg_no, name, preferred, predicted_course, admission_status))
             conn.commit()
 
         except Exception as e:
@@ -2252,43 +2317,57 @@ class MainApp:
                 return optional_passes >= reqs["optional"]["min_passes"]
 
             # Step 1: Try preferred course
+            # Step 1: Prepare input for ML prediction
+            features_df = pd.DataFrame([{
+                'UTME': total_utme,
+                'Post-UTME': post_utme,
+                'English': subject_grade_map.get("English", 9),
+                'Maths': subject_grade_map.get("Maths", 9),
+                'Physics': subject_grade_map.get("Physics", 9),
+                'Chemistry': subject_grade_map.get("Chemistry", 9),
+                'Biology': subject_grade_map.get("Biology", 9),
+                'Agric': subject_grade_map.get("Agric", 9)
+            }])
+
+            # Step 2: Try ML prediction first
+            # Step 1: Force preferred course if student qualifies for it
             if meets_requirements(preferred):
                 predicted_course = preferred
                 admission_status = "Admitted"
+
             else:
-                # Step 2: Use model to predict possible match from lower/equal ranked courses
-                features_df = pd.DataFrame([{
-                    'UTME Score': total_utme,
-                    'Post-UTME Score': post_utme,
-                    'English': subject_grade_map.get("English", 9),
-                    'Maths': subject_grade_map.get("Maths", 9),
-                    'Physics': subject_grade_map.get("Physics", 9),
-                    'Chemistry': subject_grade_map.get("Chemistry", 9),
-                    'Biology': subject_grade_map.get("Biology", 9),
-                    'Agric': subject_grade_map.get("Agric", 9)
-                }])
-                model_prediction = course_map.get(model.predict(features_df)[0], "Unknown")
+                # Step 2: Try ML prediction if preferred is not qualified
+                try:
+                    predicted_code = model.predict(features_df)[0]
+                    predicted_course = course_map.get(predicted_code, None)
 
-                fallback = None
-                preferred_lower = preferred.strip().lower()
+                    # Check if ML prediction meets requirement
+                    if predicted_course is None or not meets_requirements(predicted_course):
+                        raise ValueError("ML prediction invalid or unqualified")
 
-                if preferred_lower not in [c.lower() for c in course_priority]:
-                    print(f"⚠️ Preferred course '{preferred}' not in course priority list. Skipping.")
-                    continue
+                    admission_status = "Admitted"
 
-                for course in course_priority:
-                    if course.lower() == preferred_lower:
-                        start_index = course_priority.index(course)
-                        break
+                except:
+                    # Step 3: Fallback to rule-based scanning from preferred downward
+                    fallback = None
+                    preferred_lower = preferred.strip().lower()
 
-                for course in course_priority[start_index:]:
+                    if preferred_lower not in [c.lower() for c in course_priority]:
+                        print(f"⚠️ Preferred course '{preferred}' not in course priority list. Skipping.")
+                        continue
 
-                    if meets_requirements(course):
-                        fallback = course
-                        break
+                    for course in course_priority:
+                        if course.lower() == preferred_lower:
+                            start_index = course_priority.index(course)
+                            break
 
-                predicted_course = fallback if fallback else "-"
-                admission_status = "Admitted" if fallback else "Not Admitted"
+                    for course in course_priority[start_index:]:
+                        if meets_requirements(course):
+                            fallback = course
+                            break
+
+                    predicted_course = fallback if fallback else "-"
+                    admission_status = "Admitted" if fallback else "Not Admitted"
 
             cursor.execute('''
                 INSERT OR REPLACE INTO candidate_courses
