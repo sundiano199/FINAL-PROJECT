@@ -1,0 +1,201 @@
+English,Math,Biology,Chemistry,Physics,Agric,UTME,PostUTME,actual_course
+C4,C5,B2,C4,B2,C6,210,74,Mathematics and Statistics
+C5,B2,C4,B2,B3,C6,197,72,Plant Science and Biotechnology
+C5,C5,B3,E8,A1,A1,285,66,Mathematics and Statistics
+B2,B3,A1,C5,A1,C5,185,50,Microbiology
+B3,C6,C5,F9,B2,D7,225,77,Plant Science and Biotechnology
+F9,B2,A1,B3,A1,C5,257,86,Applied Physics
+C4,E8,E8,F9,A1,C4,273,97,Industrial Chemistry
+C5,C5,B2,C6,C5,C6,272,92,Physics
+A1,C6,C6,B3,B3,B3,185,87,Physics
+A1,B3,C5,C6,B3,C4,266,76,Computer Science
+B2,C6,D7,C5,A1,C6,187,64,Biochemistry
+F9,A1,C4,C6,B2,D7,242,88,Plant Science and Biotechnology
+C5,A1,B3,C6,A1,C4,181,93,Plant Science and Biotechnology
+F9,C4,E8,C5,F9,C4,209,54,Animal and Environmental Biology
+B3,C5,A1,C5,C6,A1,282,75,Mathematics and Statistics
+C6,D7,A1,C5,B3,C4,269,85,Biochemistry
+B3,E8,B3,B3,B2,B3,289,58,Biochemistry
+B3,F9,C5,C6,A1,C6,240,93,Biochemistry
+C5,C4,C5,D7,A1,A1,248,98,Computer Science
+B3,A1,B3,B3,F9,B3,210,78,Plant Science and Biotechnology
+D7,C5,C6,D7,B3,B3,217,77,Plant Science and Biotechnology
+B2,C6,C5,A1,C4,E8,219,53,Animal and Environmental Biology
+B2,C6,C5,C4,B2,E8,200,56,Applied Physics
+F9,C5,B2,A1,C6,C5,206,75,Mathematics and Statistics
+C4,C5,B2,C6,C6,C4,232,94,Plant Science and Biotechnology
+C6,B3,B2,C4,B2,B2,276,52,Plant Science and Biotechnology
+C4,C5,B3,E8,C6,B3,262,92,Physics
+A1,C4,D7,A1,C4,B3,194,51,Mathematics and Statistics
+C5,C5,B2,C6,C6,C4,202,99,Applied Physics
+B2,C4,B2,B2,B2,C6,273,61,Microbiology
+D7,E8,B2,B3,C4,C4,218,65,Computer Science
+A1,C5,C6,C4,B3,C5,182,97,Mathematics and Statistics
+C4,C4,B2,E8,B3,E8,233,83,Microbiology
+C4,B2,B2,D7,C4,B3,211,73,Physics
+A1,B2,B3,C4,F9,B2,180,77,Mathematics and Statistics
+B2,A1,A1,C6,A1,F9,274,52,Plant Science and Biotechnology
+C5,A1,C5,A1,C4,B2,195,74,Plant Science and Biotechnology
+A1,B2,A1,F9,B3,C6,224,96,Animal and Environmental Biology
+B2,A1,C5,C5,C5,C4,223,53,Biochemistry
+C4,C6,E8,C4,F9,C5,219,76,Applied Physics
+B2,C5,B3,B2,C4,B2,227,91,Biochemistry
+B3,B3,A1,B3,B2,C6,231,59,Animal and Environmental Biology
+B3,C6,E8,C5,A1,A1,253,92,Plant Science and Biotechnology
+C6,B3,C5,C5,B2,A1,208,75,Animal and Environmental Biology
+C6,F9,B2,C5,B2,C6,183,75,Plant Science and Biotechnology
+A1,C4,B2,B3,C6,B2,243,53,Biochemistry
+D7,B2,C6,C5,C4,B2,277,64,Plant Science and Biotechnology
+B2,B3,A1,B2,C4,C5,295,93,Computer Science
+B3,B2,B3,A1,C6,B2,267,64,Computer Science
+D7,B2,C6,B2,A1,C5,264,60,Animal and Environmental Biology
+B3,C6,A1,A1,A1,A1,288,60,Industrial Chemistry
+C5,A1,B2,B3,A1,C6,256,97,Microbiology
+A1,A1,B2,C4,C5,C4,294,74,Industrial Chemistry
+B3,B2,A1,B3,E8,B2,289,71,Plant Science and Biotechnology
+B2,C6,C5,C5,B3,C6,236,62,Microbiology
+C6,C6,C5,C5,C5,C5,264,63,Plant Science and Biotechnology
+B2,C4,D7,C4,C6,C6,249,59,Applied Physics
+C4,C5,E8,E8,C4,B2,235,81,Physics
+D7,C6,B2,A1,C6,C4,183,54,Animal and Environmental Biology
+C5,C6,E8,A1,A1,B2,273,100,Biochemistry
+B3,A1,A1,B3,B2,D7,295,55,Applied Physics
+E8,B2,F9,D7,B2,B2,240,83,Mathematics and Statistics
+C6,F9,B3,C6,B2,B2,208,50,Animal and Environmental Biology
+C5,C5,B3,D7,C5,C6,246,91,Biochemistry
+C4,C6,B2,B2,C6,B2,220,73,Plant Science and Biotechnology
+B3,C6,B2,C6,D7,C4,284,92,Applied Physics
+C5,C6,C4,B3,B3,E8,191,92,Biochemistry
+B2,B2,C6,B3,C4,C6,253,77,Computer Science
+C5,C6,C4,C4,C6,B3,228,72,Industrial Chemistry
+A1,B3,C6,C5,B2,C5,251,86,Physics
+C6,A1,C5,B2,A1,C4,202,53,Physics
+B2,B3,C6,A1,A1,B3,294,57,Animal and Environmental Biology
+C6,E8,B2,C4,B3,C6,199,89,Applied Physics
+B2,F9,B3,C6,C4,B3,295,80,Computer Science
+A1,B3,A1,C4,B2,C5,195,84,Industrial Chemistry
+B2,E8,C4,F9,A1,C5,256,65,Plant Science and Biotechnology
+C6,C6,C4,B3,B3,C5,271,80,Mathematics and Statistics
+B3,B3,C6,A1,A1,F9,261,72,Plant Science and Biotechnology
+A1,E8,C6,B3,C5,B2,269,82,Industrial Chemistry
+C6,B2,C4,B3,D7,C6,230,50,Plant Science and Biotechnology
+B2,C6,C5,C5,A1,B3,264,58,Microbiology
+C5,B2,C4,A1,C5,B2,283,100,Physics
+C5,B3,C5,C5,C4,C5,215,80,Industrial Chemistry
+C5,C6,B3,B2,C6,C6,185,71,Applied Physics
+C4,B3,A1,A1,C6,C4,294,73,Physics
+C6,C4,A1,B3,B3,B3,233,83,Physics
+B2,E8,A1,C6,C4,B2,267,52,Physics
+B2,A1,C6,B3,B3,C4,193,51,Microbiology
+A1,B3,C6,B3,B2,A1,265,81,Industrial Chemistry
+B3,C5,A1,A1,B3,C5,192,84,Biochemistry
+B2,C6,F9,B2,C6,C6,214,96,Plant Science and Biotechnology
+B3,C6,D7,C5,F9,B2,203,54,Mathematics and Statistics
+C4,F9,B3,C4,B3,C5,294,76,Animal and Environmental Biology
+C5,C5,C5,B2,F9,C6,224,81,Microbiology
+A1,C4,C4,B3,C4,C6,195,65,Biochemistry
+C5,B3,C6,A1,C6,E8,252,83,Animal and Environmental Biology
+B3,C6,C4,B2,A1,C6,263,88,Industrial Chemistry
+B3,C5,C4,F9,C5,A1,231,78,Computer Science
+A1,C5,C4,B2,C4,B2,204,70,Industrial Chemistry
+C6,B2,A1,E8,C6,C6,295,91,Computer Science
+B2,B2,B3,C6,A1,A1,280,67,Applied Physics
+B2,C6,C6,F9,B2,A1,206,85,Plant Science and Biotechnology
+C5,C4,B2,C6,C5,A1,254,96,Industrial Chemistry
+A1,C6,D7,E8,C6,C6,244,59,Biochemistry
+A1,C6,C6,B3,E8,A1,283,55,Physics
+C5,C5,C6,A1,B2,C6,276,57,Mathematics and Statistics
+A1,C6,C6,C4,A1,B3,238,68,Microbiology
+B3,A1,C6,C6,C5,A1,212,89,Computer Science
+C5,C4,C5,C4,C4,C6,293,99,Applied Physics
+F9,B3,B3,F9,C6,B3,193,75,Applied Physics
+B3,E8,C4,B3,B3,C6,239,53,Physics
+C4,A1,C5,A1,C4,C5,289,82,Animal and Environmental Biology
+C5,A1,B3,C5,A1,C6,207,59,Computer Science
+C4,C6,F9,B2,C6,C4,199,65,Physics
+F9,B3,B2,C4,C4,B3,269,98,Industrial Chemistry
+C4,C6,E8,C4,C4,A1,190,56,Industrial Chemistry
+C5,B2,A1,C6,B2,E8,243,63,Applied Physics
+B2,B3,C6,C6,B2,C5,220,78,Plant Science and Biotechnology
+C4,F9,C5,F9,C6,A1,266,75,Mathematics and Statistics
+C6,C5,B2,A1,B3,A1,279,76,Applied Physics
+A1,B2,C4,C6,C6,B2,227,71,Applied Physics
+D7,C6,D7,C4,C4,C6,241,51,Applied Physics
+C5,C5,B3,C4,B3,A1,226,69,Biochemistry
+C4,A1,B2,C6,A1,B2,220,79,Animal and Environmental Biology
+C4,B2,C4,A1,B3,B3,291,54,Physics
+B3,C6,C5,C6,C5,C5,210,79,Mathematics and Statistics
+C6,C5,B2,B3,B2,C5,206,51,Computer Science
+F9,C4,B2,C6,C5,F9,289,61,Applied Physics
+C4,C5,B3,A1,A1,C5,240,71,Microbiology
+C4,C5,C4,C6,C6,A1,295,78,Microbiology
+C5,C6,B2,A1,B3,C6,213,51,Biochemistry
+C4,B2,C6,B3,A1,C5,240,85,Physics
+C5,B3,B2,C5,C4,C6,279,91,Applied Physics
+B2,A1,B3,B2,D7,A1,203,82,Industrial Chemistry
+C5,B3,C6,C4,B3,B3,254,66,Applied Physics
+C5,C4,B3,C6,C6,C5,239,66,Mathematics and Statistics
+C5,B3,C6,C4,A1,F9,286,85,Industrial Chemistry
+B3,C5,B3,B3,C5,B3,198,57,Physics
+C4,C4,B3,C4,C4,C6,278,90,Plant Science and Biotechnology
+C5,B2,C4,C4,C6,C4,296,80,Mathematics and Statistics
+B3,B3,C4,A1,B3,B3,196,72,Microbiology
+A1,B2,B3,C6,C6,C5,279,89,Mathematics and Statistics
+B3,C5,C5,B3,C5,B2,279,92,Plant Science and Biotechnology
+A1,F9,C4,B3,B2,A1,262,96,Biochemistry
+A1,C5,B2,B2,C5,B2,191,95,Mathematics and Statistics
+C4,B3,A1,C6,C6,C6,202,88,Plant Science and Biotechnology
+A1,B3,C4,C5,C4,B2,232,82,Plant Science and Biotechnology
+C6,A1,C6,C6,C5,C6,247,57,Physics
+B3,C5,B3,C4,C5,C4,242,65,Physics
+A1,C6,A1,B3,D7,C4,226,87,Physics
+B2,A1,C4,B2,C6,C4,280,79,Mathematics and Statistics
+C5,C5,C4,C4,B2,C4,281,87,Biochemistry
+B2,B3,A1,A1,C4,C6,245,87,Industrial Chemistry
+F9,B2,A1,C6,A1,B3,186,50,Mathematics and Statistics
+B3,C4,A1,C4,C4,B3,292,67,Plant Science and Biotechnology
+B3,A1,A1,A1,C5,B2,195,89,Applied Physics
+B3,C6,A1,B2,C6,C5,290,94,Mathematics and Statistics
+C6,A1,B2,C4,B2,B3,214,92,Computer Science
+B3,C6,A1,C5,C6,C5,223,89,Physics
+B2,C6,C5,A1,B2,B3,261,65,Industrial Chemistry
+A1,C6,B3,C4,C6,E8,252,70,Mathematics and Statistics
+C4,A1,C4,C4,C6,C6,200,78,Computer Science
+C6,C5,C5,B2,A1,B2,285,66,Industrial Chemistry
+B3,B3,C5,C4,B3,C6,295,99,Industrial Chemistry
+D7,A1,A1,A1,C4,C4,298,95,Computer Science
+B2,B3,B2,B3,C5,C4,268,83,Microbiology
+B2,E8,C5,D7,C6,B3,281,73,Applied Physics
+D7,F9,C6,C5,C5,F9,198,63,Physics
+C5,A1,B2,B3,C6,C4,219,64,Animal and Environmental Biology
+C4,B3,C5,C5,C4,B3,217,74,Applied Physics
+C4,C6,A1,C4,B2,A1,202,75,Industrial Chemistry
+C5,B2,B2,C6,A1,B2,203,81,Microbiology
+D7,D7,A1,B3,D7,C6,218,72,Mathematics and Statistics
+B2,B2,B2,B3,A1,B2,218,99,Plant Science and Biotechnology
+B2,C4,F9,C4,C5,C5,243,56,Plant Science and Biotechnology
+C6,B3,B3,B3,A1,B2,283,96,Animal and Environmental Biology
+B3,C4,B3,A1,F9,C6,291,94,Animal and Environmental Biology
+B3,E8,C6,A1,B2,D7,198,93,Plant Science and Biotechnology
+B3,B3,C5,B2,D7,A1,264,83,Animal and Environmental Biology
+C6,B3,C5,C5,A1,B3,240,51,Industrial Chemistry
+C6,E8,A1,E8,D7,C5,197,91,Mathematics and Statistics
+C6,C6,B2,B3,E8,B2,290,67,Physics
+C4,A1,B3,B3,A1,A1,252,78,Plant Science and Biotechnology
+C4,B2,E8,B2,A1,A1,223,81,Physics
+C5,B2,C5,B3,C6,C6,236,58,Microbiology
+C6,C4,C5,C4,C6,C5,274,72,Microbiology
+B3,C6,F9,C5,A1,B2,236,73,Animal and Environmental Biology
+B2,B2,B3,B3,B2,C4,250,73,Physics
+F9,A1,C6,C4,C4,B3,272,67,Plant Science and Biotechnology
+C6,B2,B2,B2,A1,D7,203,71,Microbiology
+B3,C6,E8,B3,A1,C6,192,97,Computer Science
+C4,C5,C6,B2,C6,C5,222,52,Plant Science and Biotechnology
+C5,E8,C5,C6,C4,C6,285,73,Industrial Chemistry
+B3,B3,B3,E8,C6,E8,189,92,Applied Physics
+B2,A1,A1,C6,E8,C4,213,88,Plant Science and Biotechnology
+F9,C6,A1,C4,B3,C6,223,68,Biochemistry
+C6,B3,B2,C6,B3,C4,202,56,Biochemistry
+F9,C4,B2,C5,E8,C5,218,53,Industrial Chemistry
+C5,B2,A1,C6,B2,C4,216,100,Plant Science and Biotechnology
+A1,C4,C4,A1,D7,C6,296,58,Animal and Environmental Biology

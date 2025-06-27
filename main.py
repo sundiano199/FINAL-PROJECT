@@ -163,7 +163,7 @@ class LoginScreen:
         right_frame.place(relx=0.4, rely=0.05, relwidth=0.58, relheight=0.8)
 
         info = [
-            ("Developed By: ", "EMMANUEL SUNDAY A.", "#C0C0FF", "#2121CB"),
+            ("Developed By: ", "EMMANUEL SUNDAY AYODIMEJI", "#C0C0FF", "#2121CB"),
             ("Matric No: ", "FTP/CSC/24/0094922", "#C0C0FF", "#E8485F"),
             ("Supervised By: ", "DR. RUFAI M. M.", "#C0C0FF", "#2323C7"),
             ("COMPUTER SCIENCE DEPARTMENT", "", "#000000", "#F9F9FA"),
@@ -2018,148 +2018,79 @@ class MainApp:
         try:
             model = joblib.load("admission_model.pkl")
         except Exception as e:
-            messagebox.showerror("Model Error", f"Failed to load prediction model:\n{e}")
+            messagebox.showerror("Model Error", f"❌ Failed to load prediction model:\n{e}")
             return
 
-        conn = sqlite3.connect("students.db")
-        cursor = conn.cursor()
+        try:
+            label_encoder = joblib.load("label_encoder.pkl")
+        except Exception as e:
+            messagebox.showerror("Encoder Error", f"❌ Failed to load label encoder:\n{e}")
+            return
 
-        # Load label encoder (optional if needed)
-        course_map = {
-            0: "Computer Science",
-            1: "Microbiology",
-            2: "Biochemistry",
-            3: "Physics",
-            4: "Applied Physics",
-            5: "Industrial Chemistry",
-            6: "Mathematics and Statistics",
-            7: "Animal and Environmental Biology",
-            8: "Plant Science and Biotechnology"
-        }
-
-        course_priority = list(course_map.values())
-
-        # Define course requirements
-        course_requirements = {
-            "Computer Science": {"utme": 240, "post_utme": 75,
-                                 "required": ["English", "Maths", "Physics"],
-                                 "optional": {"choices": ["Biology", "Chemistry", "Agric"], "min_passes": 2},
-                                 "max_grade": 6},
-            "Microbiology": {"utme": 230, "post_utme": 70,
-                             "required": ["English", "Maths", "Biology", "Agric"],
-                             "optional": {"choices": ["Physics", "Chemistry"], "min_passes": 1},
-                             "max_grade": 6},
-            "Biochemistry": {"utme": 225, "post_utme": 70,
-                             "required": ["English", "Maths", "Chemistry", "Biology"],
-                             "optional": {"choices": ["Physics", "Agric"], "min_passes": 1},
-                             "max_grade": 6},
-            "Physics": {"utme": 220, "post_utme": 68,
-                        "required": ["English", "Maths", "Physics", "Chemistry"],
-                        "optional": {"choices": ["Biology", "Agric"], "min_passes": 1},
-                        "max_grade": 6},
-            "Applied Physics": {"utme": 215, "post_utme": 66,
-                                "required": ["English", "Maths", "Physics", "Chemistry"],
-                                "optional": {"choices": ["Biology", "Agric"], "min_passes": 1},
-                                "max_grade": 6},
-            "Industrial Chemistry": {"utme": 210, "post_utme": 65,
-                                     "required": ["English", "Maths", "Physics", "Chemistry"],
-                                     "optional": {"choices": ["Agric", "Biology"], "min_passes": 1},
-                                     "max_grade": 6},
-            "Mathematics and Statistics": {"utme": 205, "post_utme": 65,
-                                           "required": ["English", "Maths", "Physics", "Chemistry"],
-                                           "optional": {"choices": ["Agric", "Biology"], "min_passes": 1},
-                                           "max_grade": 6},
-            "Animal and Environmental Biology": {"utme": 203, "post_utme": 60,
-                                                 "required": ["English", "Maths", "Agric", "Biology"],
-                                                 "optional": {"choices": ["Physics", "Chemistry"], "min_passes": 1},
-                                                 "max_grade": 6},
-            "Plant Science and Biotechnology": {"utme": 200, "post_utme": 60,
-                                                "required": ["English", "Maths", "Agric", "Biology"],
-                                                "optional": {"choices": ["Physics", "Chemistry"], "min_passes": 1},
-                                                "max_grade": 6}
+        grade_map = {
+            "A1": 1, "B2": 2, "B3": 3,
+            "C4": 4, "C5": 5, "C6": 6,
+            "D7": 7, "E8": 8, "F9": 9
         }
 
         try:
-            # Fetch student data
+            conn = sqlite3.connect("students.db")
+            cursor = conn.cursor()
+
+            # Get student name
             cursor.execute("SELECT surname, othernames FROM students WHERE reg_no=?", (reg_no,))
-            row = cursor.fetchone()
-            if not row:
-                raise ValueError("Student biodata not found.")
-            name = f"{row[0]} {row[1]}"
+            name_row = cursor.fetchone()
+            if not name_row:
+                raise ValueError("Student not found.")
+            name = f"{name_row[0]} {name_row[1]}"
 
+            # Get preferred course
             cursor.execute("SELECT preferred_course FROM candidate_courses WHERE reg_no=?", (reg_no,))
-            preferred_row = cursor.fetchone()
-            preferred = preferred_row[0] if preferred_row else "Unknown"
+            pref_row = cursor.fetchone()
+            preferred = pref_row[0] if pref_row else "Unknown"
 
+            # Get UTME and Post-UTME
             cursor.execute("SELECT total_score, post_utme_score FROM utme_postutme WHERE reg_no=?", (reg_no,))
-            utme_row = cursor.fetchone()
-            if not utme_row:
+            scores = cursor.fetchone()
+            if not scores:
                 raise ValueError("UTME/Post-UTME scores not found.")
-            utme, post_utme = utme_row
+            utme, post_utme = scores
 
-            cursor.execute(
-                "SELECT subject1, grade1, subject2, grade2, subject3, grade3, subject4, grade4, subject5, grade5, subject6, grade6 FROM olevel_results WHERE reg_no=?",
-                (reg_no,))
+            # Get O'Level results
+            cursor.execute("""
+                SELECT subject1, grade1, subject2, grade2, subject3, grade3,
+                       subject4, grade4, subject5, grade5, subject6, grade6
+                FROM olevel_results WHERE reg_no=?
+            """, (reg_no,))
             olevel_row = cursor.fetchone()
             if not olevel_row:
                 raise ValueError("O'Level results not found.")
-
-            grade_map = {
-                "A1": 1, "B2": 2, "B3": 3,
-                "C4": 4, "C5": 5, "C6": 6,
-                "D7": 7, "E8": 8, "F9": 9
-            }
 
             subjects = [olevel_row[i] for i in range(0, len(olevel_row), 2)]
             grades = [grade_map.get(olevel_row[i + 1].upper(), 9) for i in range(0, len(olevel_row), 2)]
             subject_grade_map = dict(zip(subjects, grades))
 
+            # Prepare input features for model
             features_df = pd.DataFrame([{
-                'UTME': utme,
-                'Post-UTME': post_utme,
-                'English': subject_grade_map.get("English", 9),
-                'Maths': subject_grade_map.get("Maths", 9),
-                'Physics': subject_grade_map.get("Physics", 9),
-                'Chemistry': subject_grade_map.get("Chemistry", 9),
-                'Biology': subject_grade_map.get("Biology", 9),
-                'Agric': subject_grade_map.get("Agric", 9)
+                "UTME": utme,
+                "Post-UTME": post_utme,
+                "English": subject_grade_map.get("English", 9),
+                "Maths": subject_grade_map.get("Maths", 9),
+                "Physics": subject_grade_map.get("Physics", 9),
+                "Chemistry": subject_grade_map.get("Chemistry", 9),
+                "Biology": subject_grade_map.get("Biology", 9),
+                "Agric": subject_grade_map.get("Agric", 9),
+                "Geography": subject_grade_map.get("Geography", 9),
+                "Economics": subject_grade_map.get("Economics", 9),
+                "Literature": subject_grade_map.get("Literature", 9)
             }])
 
-            ml_prediction_index = model.predict(features_df)[0]
-            ml_prediction = course_map.get(ml_prediction_index, "Unknown")
+            # ML prediction
+            pred_code = model.predict(features_df)[0]
+            predicted_course = label_encoder.inverse_transform([pred_code])[0]
+            admission_status = "Admitted"
 
-            # Check course eligibility
-            def meets_requirements(course):
-                reqs = course_requirements.get(course)
-                if not reqs:
-                    return False
-                if utme < reqs["utme"] or post_utme < reqs["post_utme"]:
-                    return False
-                for sub in reqs["required"]:
-                    if subject_grade_map.get(sub, 9) > reqs["max_grade"]:
-                        return False
-                optional_passes = sum(1 for sub in reqs["optional"]["choices"]
-                                      if subject_grade_map.get(sub, 9) <= reqs["max_grade"])
-                return optional_passes >= reqs["optional"]["min_passes"]
-
-            # Priority 1: Preferred course (if qualified)
-            if meets_requirements(preferred):
-                predicted_course = preferred
-                admission_status = "Admitted"
-            # Priority 2: ML prediction (if qualified)
-            elif meets_requirements(ml_prediction):
-                predicted_course = ml_prediction
-                admission_status = "Admitted"
-            # Priority 3: Fallback to lower-ranked valid course
-            else:
-                fallback = "-"
-                for course in course_priority:
-                    if meets_requirements(course):
-                        fallback = course
-                        break
-                predicted_course = fallback
-                admission_status = "Admitted" if fallback != "-" else "Not Admitted"
-
+            # Update interface
             self.prediction_result.set(f"Predicted Course: {predicted_course}\nAdmission Status: {admission_status}")
 
             # Update database
@@ -2179,12 +2110,51 @@ class MainApp:
         import sqlite3
         import pandas as pd
         import joblib
+        from tkinter import messagebox
 
         try:
             model = joblib.load("admission_model.pkl")
         except Exception as e:
             messagebox.showerror("Model Error", f"❌ Failed to load prediction model:\n{e}")
             return
+
+        try:
+            label_encoder = joblib.load("label_encoder.pkl")
+        except Exception as e:
+            messagebox.showerror("Encoder Error", f"❌ Failed to load label encoder:\n{e}")
+            return
+
+        grade_map = {
+            "A1": 1, "B2": 2, "B3": 3,
+            "C4": 4, "C5": 5, "C6": 6,
+            "D7": 7, "E8": 8, "F9": 9
+        }
+
+        # Course hierarchy
+        course_hierarchy = [
+            "Computer Science",
+            "Microbiology",
+            "Biochemistry",
+            "Physics",
+            "Applied Physics",
+            "Industrial Chemistry",
+            "Mathematics and Statistics",
+            "Animal and Environmental Biology",
+            "Plant Science and Biotechnology"
+        ]
+
+        # Real admission cutoffs
+        cutoffs = {
+            "Computer Science": (240, 75),
+            "Microbiology": (230, 70),
+            "Biochemistry": (225, 70),
+            "Physics": (220, 68),
+            "Applied Physics": (215, 66),
+            "Industrial Chemistry": (210, 65),
+            "Mathematics and Statistics": (205, 65),
+            "Animal and Environmental Biology": (203, 60),
+            "Plant Science and Biotechnology": (200, 60)
+        }
 
         conn = sqlite3.connect("students.db")
         cursor = conn.cursor()
@@ -2193,83 +2163,24 @@ class MainApp:
         cursor.execute("SELECT reg_no, surname, othernames, preferred_course FROM students")
         candidates = cursor.fetchall()
 
-        # Grade to numeric map
-        grade_map = {
-            "A1": 1, "B2": 2, "B3": 3,
-            "C4": 4, "C5": 5, "C6": 6,
-            "D7": 7, "E8": 8, "F9": 9
-        }
-
-        # ML label map
-        course_map = {
-            0: "Computer Science",
-            1: "Microbiology",
-            2: "Biochemistry",
-            3: "Physics",
-            4: "Applied Physics",
-            5: "Industrial Chemistry",
-            6: "Mathematics and Statistics",
-            7: "Animal and Environmental Biology",
-            8: "Plant Science and Biotechnology"
-        }
-
-        # Course hierarchy
-        course_priority = list(course_map.values())
-
-        # Course requirements definition
-        course_requirements = {
-            "Computer Science": {"utme": 240, "post_utme": 75,
-                                 "required": ["English", "Maths", "Physics"],
-                                 "optional": {"choices": ["Biology", "Chemistry", "Agric"], "min_passes": 2},
-                                 "max_grade": 6},
-            "Microbiology": {"utme": 230, "post_utme": 70,
-                             "required": ["English", "Maths", "Biology", "Agric"],
-                             "optional": {"choices": ["Physics", "Chemistry"], "min_passes": 1},
-                             "max_grade": 6},
-            "Biochemistry": {"utme": 225, "post_utme": 70,
-                             "required": ["English", "Maths", "Chemistry", "Biology"],
-                             "optional": {"choices": ["Physics", "Agric"], "min_passes": 1},
-                             "max_grade": 6},
-            "Physics": {"utme": 220, "post_utme": 68,
-                        "required": ["English", "Maths", "Physics", "Chemistry"],
-                        "optional": {"choices": ["Biology", "Agric"], "min_passes": 1},
-                        "max_grade": 6},
-            "Applied Physics": {"utme": 215, "post_utme": 66,
-                                "required": ["English", "Maths", "Physics", "Chemistry"],
-                                "optional": {"choices": ["Biology", "Agric"], "min_passes": 1},
-                                "max_grade": 6},
-            "Industrial Chemistry": {"utme": 210, "post_utme": 65,
-                                     "required": ["English", "Maths", "Physics", "Chemistry"],
-                                     "optional": {"choices": ["Agric", "Biology"], "min_passes": 1},
-                                     "max_grade": 6},
-            "Mathematics and Statistics": {"utme": 205, "post_utme": 65,
-                                           "required": ["English", "Maths", "Physics", "Chemistry"],
-                                           "optional": {"choices": ["Agric", "Biology"], "min_passes": 1},
-                                           "max_grade": 6},
-            "Animal and Environmental Biology": {"utme": 203, "post_utme": 60,
-                                                 "required": ["English", "Maths", "Agric", "Biology"],
-                                                 "optional": {"choices": ["Physics", "Chemistry"], "min_passes": 1},
-                                                 "max_grade": 6},
-            "Plant Science and Biotechnology": {"utme": 200, "post_utme": 60,
-                                                "required": ["English", "Maths", "Agric", "Biology"],
-                                                "optional": {"choices": ["Physics", "Chemistry"], "min_passes": 1},
-                                                "max_grade": 6}
-        }
-
         success = 0
 
         for reg_no, surname, othernames, preferred in candidates:
             name = f"{surname} {othernames}"
 
+            # Fetch scores
             cursor.execute("SELECT total_score, post_utme_score FROM utme_postutme WHERE reg_no=?", (reg_no,))
             utme_row = cursor.fetchone()
             if not utme_row:
                 continue
             total_utme, post_utme = utme_row
 
-            cursor.execute(
-                "SELECT subject1, grade1, subject2, grade2, subject3, grade3, subject4, grade4, subject5, grade5, subject6, grade6 FROM olevel_results WHERE reg_no=?",
-                (reg_no,))
+            # Fetch O'Level
+            cursor.execute("""
+                SELECT subject1, grade1, subject2, grade2, subject3, grade3, 
+                       subject4, grade4, subject5, grade5, subject6, grade6 
+                FROM olevel_results WHERE reg_no=?
+            """, (reg_no,))
             olevel_row = cursor.fetchone()
             if not olevel_row:
                 continue
@@ -2278,22 +2189,7 @@ class MainApp:
             grades = [grade_map.get(olevel_row[i + 1].upper(), 9) for i in range(0, len(olevel_row), 2)]
             subject_grade_map = dict(zip(subjects, grades))
 
-            def meets_requirements(course):
-                reqs = course_requirements.get(course)
-                if not reqs:
-                    return False
-                if total_utme < reqs["utme"] or post_utme < reqs["post_utme"]:
-                    return False
-                for sub in reqs["required"]:
-                    if subject_grade_map.get(sub, 9) > reqs["max_grade"]:
-                        return False
-                optional_passes = sum(1 for sub in reqs["optional"]["choices"]
-                                      if subject_grade_map.get(sub, 9) <= reqs["max_grade"])
-                return optional_passes >= reqs["optional"]["min_passes"]
-
-            # Step 1: Try preferred course
-            # Step 1: Prepare input for ML prediction
-            features_df = pd.DataFrame([{
+            features = pd.DataFrame([{
                 'UTME': total_utme,
                 'Post-UTME': post_utme,
                 'English': subject_grade_map.get("English", 9),
@@ -2301,61 +2197,47 @@ class MainApp:
                 'Physics': subject_grade_map.get("Physics", 9),
                 'Chemistry': subject_grade_map.get("Chemistry", 9),
                 'Biology': subject_grade_map.get("Biology", 9),
-                'Agric': subject_grade_map.get("Agric", 9)
+                'Agric': subject_grade_map.get("Agric", 9),
+                'Geography': subject_grade_map.get("Geography", 9),
+                'Economics': subject_grade_map.get("Economics", 9),
+                'Literature': subject_grade_map.get("Literature", 9)
             }])
 
-            # Step 2: Try ML prediction first
-            # Step 1: Force preferred course if student qualifies for it
-            if meets_requirements(preferred):
-                predicted_course = preferred
-                admission_status = "Admitted"
+            try:
+                pred_code = model.predict(features)[0]
+                predicted_course = label_encoder.inverse_transform([pred_code])[0]
 
-            else:
-                # Step 2: Try ML prediction if preferred is not qualified
-                try:
-                    predicted_code = model.predict(features_df)[0]
-                    predicted_course = course_map.get(predicted_code, None)
+                # Override if predicted course is above preferred
+                if course_hierarchy.index(predicted_course) < course_hierarchy.index(preferred):
+                    predicted_course = preferred
+                    # Don't reset scores – use their actual scores
 
-                    # Check if ML prediction meets requirement
-                    if predicted_course is None or not meets_requirements(predicted_course):
-                        raise ValueError("ML prediction invalid or unqualified")
-
+                # Final UTME/Post-UTME validation
+                utme_cut, putme_cut = cutoffs.get(predicted_course, (200, 60))
+                if total_utme < utme_cut or post_utme < putme_cut:
+                    predicted_course = "-"
+                    admission_status = "Not Admitted"
+                else:
                     admission_status = "Admitted"
 
-                except:
-                    # Step 3: Fallback to rule-based scanning from preferred downward
-                    fallback = None
-                    preferred_lower = preferred.strip().lower()
+            except Exception as e:
+                predicted_course = "-"
+                admission_status = "Not Admitted"
 
-                    if preferred_lower not in [c.lower() for c in course_priority]:
-                        print(f"⚠️ Preferred course '{preferred}' not in course priority list. Skipping.")
-                        continue
-
-                    for course in course_priority:
-                        if course.lower() == preferred_lower:
-                            start_index = course_priority.index(course)
-                            break
-
-                    for course in course_priority[start_index:]:
-                        if meets_requirements(course):
-                            fallback = course
-                            break
-
-                    predicted_course = fallback if fallback else "-"
-                    admission_status = "Admitted" if fallback else "Not Admitted"
-
-            cursor.execute('''
+            # Save
+            cursor.execute("""
                 INSERT OR REPLACE INTO candidate_courses
                 (reg_no, name, preferred_course, predicted_course, admission_status)
                 VALUES (?, ?, ?, ?, ?)
-            ''', (reg_no, name, preferred, predicted_course, admission_status))
+            """, (reg_no, name, preferred, predicted_course, admission_status))
 
             success += 1
 
         conn.commit()
         conn.close()
         self.load_candidate_courses_data()
-        messagebox.showinfo("Prediction Complete", f"✅ {success} candidates updated with predictions.")
+
+        messagebox.showinfo("Prediction Complete", f"✅ {success} candidates predicted using ML + cutoff rules.")
 
 
 # --- Initialize App ---
