@@ -1,30 +1,48 @@
+import os
+import sys
+import random
+import tempfile
+import sqlite3
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
-import sqlite3
-from PIL import Image, ImageTk
-import os
-import random
-from tkinter import filedialog, messagebox
-import tempfile
+
 import pandas as pd
-from sklearn.ensemble import (RandomForestClassifier)
-from sklearn.preprocessing import LabelEncoder
 import joblib
+from PIL import Image, ImageTk
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
 import customtkinter as ctk
 
 
+def resource_path(relative_path):
+    """ Get the absolute path to a resource, works for dev and for PyInstaller """
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+model_path = resource_path("admission_model.pkl")
+if not os.path.exists(model_path):
+    messagebox.showerror("Error", f"❌ Model file not found at: {model_path}")
+else:
+    print("✅ Model found at:", model_path)
+
 
 # Load model and label encoder
-model = joblib.load("admission_model.pkl")
-label_encoder = joblib.load("label_encoder.pkl")
+model = joblib.load(resource_path("admission_model.pkl"))
+label_encoder = joblib.load(resource_path("label_encoder.pkl"))
 
-# Ensure consistent connection to the correct database
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-db_path = os.path.join(BASE_DIR, "students.db")
-conn = sqlite3.connect(db_path)
+# Connect to the database using resource_path
+conn = sqlite3.connect(resource_path("students.db"))
 
 
 
+
+print("📦 Model:", os.path.exists(resource_path("admission_model.pkl")))
+print("📦 DB:", os.path.exists(resource_path("students.db")))
+print("📦 Encoder:", os.path.exists(resource_path("label_encoder.pkl")))
+print("📦 CSV:", os.path.exists(resource_path("sample_student_data.csv")))
 
 
 
@@ -54,7 +72,7 @@ SCREEN_HEIGHT = 1050
 
 
 # ✅ Step 1: Load data
-df = pd.read_csv("sample_student_data.csv")  # Make sure this file exists in the same folder
+df = pd.read_csv(resource_path("sample_student_data.csv"))  # Make sure this file exists in the same folder
 
 # ✅ Step 2: Convert O'Level grades to numeric
 grade_map = {
@@ -75,7 +93,8 @@ X = df[['UTME', 'Post-UTME', 'English', 'Maths', 'Physics', 'Chemistry', 'Biolog
 y = df['department_encoded']
 
 def initialize_db():
-    conn = sqlite3.connect("students.db")
+    conn = sqlite3.connect(resource_path("students.db"))
+
     cursor = conn.cursor()
 
     # Create students table
@@ -307,7 +326,7 @@ class MainApp:
             return
 
         try:
-            conn = sqlite3.connect("students.db")
+            conn = sqlite3.connect(resource_path("students.db"))
             cursor = conn.cursor()
             cursor.execute('''
                 INSERT OR REPLACE INTO students (
@@ -399,7 +418,7 @@ class MainApp:
         # Load function
         def load_admitted_candidates():
             tree.delete(*tree.get_children())
-            conn = sqlite3.connect("students.db")
+            conn = sqlite3.connect(resource_path("students.db"))
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT reg_no, name, predicted_course
@@ -432,7 +451,7 @@ class MainApp:
 
         def filter_data():
             tree.delete(*tree.get_children())
-            conn = sqlite3.connect("students.db")
+            conn = sqlite3.connect(resource_path("students.db"))
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT reg_no, name, predicted_course
@@ -457,7 +476,7 @@ class MainApp:
                 with open(filename, newline='') as f:
                     reader = csv.reader(f)
                     next(reader)
-                    conn = sqlite3.connect("students.db")
+                    conn = sqlite3.connect(resource_path("students.db"))
                     cursor = conn.cursor()
                     for row in reader:
                         cursor.execute(
@@ -521,7 +540,7 @@ class MainApp:
         reg_no = self.tree.item(selected)['values'][0]
 
         # Delete from database
-        conn = sqlite3.connect("students.db")
+        conn = sqlite3.connect(resource_path("students.db"))
         cursor = conn.cursor()
         cursor.execute("DELETE FROM students WHERE reg_no=?", (reg_no,))
         conn.commit()
@@ -549,7 +568,7 @@ class MainApp:
                                                                                               sticky='e', padx=10,
                                                                                               pady=10)
 
-        conn = sqlite3.connect("students.db")
+        conn = sqlite3.connect(resource_path("students.db"))
         cursor = conn.cursor()
         cursor.execute("SELECT reg_no FROM students")
         reg_nos = [row[0] for row in cursor.fetchall()]
@@ -619,7 +638,7 @@ class MainApp:
                 messagebox.showerror("Error", "Please ensure all scores are valid numbers.")
                 return
 
-            conn = sqlite3.connect("students.db")
+            conn = sqlite3.connect(resource_path("students.db"))
             cursor = conn.cursor()
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS utme_postutme (
@@ -670,7 +689,7 @@ class MainApp:
                                                                                               sticky='e', padx=10,
                                                                                               pady=10)
 
-        conn = sqlite3.connect("students.db")
+        conn = sqlite3.connect(resource_path("students.db"))
         cursor = conn.cursor()
         cursor.execute("SELECT reg_no FROM students")
         reg_nos = [row[0] for row in cursor.fetchall()]
@@ -740,7 +759,7 @@ class MainApp:
                 messagebox.showerror("Error", "Please ensure all scores are valid numbers.")
                 return
 
-            conn = sqlite3.connect("students.db")
+            conn = sqlite3.connect(resource_path("students.db"))
             cursor = conn.cursor()
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS utme_postutme (
@@ -787,7 +806,7 @@ class MainApp:
 
         # Load trained model and label encoder
         try:
-            model = joblib.load("admission_model.pkl")
+            model = joblib.load(resource_path("admission_model.pkl"))
             le = joblib.load("label_encoder.pkl")
         except Exception as e:
             messagebox.showerror("Model Error", f"Failed to load model or encoder:\n{e}")
@@ -811,7 +830,7 @@ class MainApp:
             messagebox.showerror("Format Error", "File must contain: reg_no, name, preferred_course")
             return
 
-        conn = sqlite3.connect("students.db")
+        conn = sqlite3.connect(resource_path("students.db"))
         cursor = conn.cursor()
         successful = 0
 
@@ -962,7 +981,7 @@ class MainApp:
         self.controller.load_registered_candidates_into_tree(self.tree)
 
     def load_registered_candidates(self):
-        conn = sqlite3.connect("students.db")
+        conn = sqlite3.connect(resource_path("students.db"))
         cursor = conn.cursor()
 
         # Adjust this SELECT to fetch only needed DB fields
@@ -989,7 +1008,7 @@ class MainApp:
             return
 
         try:
-            conn = sqlite3.connect("students.db")
+            conn = sqlite3.connect(resource_path("students.db"))
             cursor = conn.cursor()
 
             # Clear all related tables
@@ -1015,7 +1034,7 @@ class MainApp:
         if selected_item:
             reg_no = tree.item(selected_item[0])['values'][0]
 
-            conn = sqlite3.connect("students.db")
+            conn = sqlite3.connect(resource_path("students.db"))
             cursor = conn.cursor()
             cursor.execute("SELECT photo_path FROM students WHERE reg_no=?", (reg_no,))
             row = cursor.fetchone()
@@ -1058,12 +1077,12 @@ class MainApp:
                 messagebox.showerror("Error", "Missing required columns in file.")
                 return
 
-            conn = sqlite3.connect("students.db")
+            conn = sqlite3.connect(resource_path("students.db"))
             cursor = conn.cursor()
 
             # Load model and encoder
-            model = joblib.load("admission_model.pkl")
-            label_encoder = joblib.load("label_encoder.pkl")
+            model = joblib.load(resource_path("admission_model.pkl"))
+            label_encoder = joblib.load(resource_path("label_encoder.pkl"))
 
             for _, row in df.iterrows():
                 values = tuple(row[col] for col in required_columns)
@@ -1132,8 +1151,8 @@ class MainApp:
 
         try:
             # Load trained model and encoder
-            model = joblib.load("admission_model.pkl")
-            label_encoder = joblib.load("label_encoder.pkl")
+            model = joblib.load(resource_path("admission_model.pkl"))
+            label_encoder = joblib.load(resource_path("label_encoder.pkl"))
 
             # Grade mapping
             grade_map = {
@@ -1143,7 +1162,7 @@ class MainApp:
             }
 
             # Connect to DB
-            conn = sqlite3.connect("students.db")
+            conn = sqlite3.connect(resource_path("students.db"))
             cursor = conn.cursor()
 
             # Fetch scores table
@@ -1225,7 +1244,7 @@ class MainApp:
             messagebox.showerror("Prediction Error", f"❌ Prediction failed:\n{e}")
 
     def load_registered_candidates_data(self):
-        conn = sqlite3.connect("students.db")
+        conn = sqlite3.connect(resource_path("students.db"))
         cursor = conn.cursor()
         cursor.execute(
             "SELECT reg_no, surname, othernames, sex, dob, nationality, session, reg_date, year FROM students")
@@ -1274,7 +1293,7 @@ class MainApp:
             messagebox.showerror("Format Error", f"CSV file must contain all required columns.")
             return
 
-        conn = sqlite3.connect("students.db")
+        conn = sqlite3.connect(resource_path("students.db"))
         cursor = conn.cursor()
         success_count = 0
 
@@ -1419,8 +1438,17 @@ class MainApp:
         tk.Label(scrollable_frame, text=f"Candidate Full Profile - {reg_no}", font=FONT_HEADER, bg=BG_COLOR).pack(
             pady=10)
 
-        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-        db_path = os.path.join(BASE_DIR, "students.db")
+        import sys, os, sqlite3
+
+        def resource_path(relative_path):
+            try:
+                base_path = sys._MEIPASS  # For PyInstaller EXE
+            except Exception:
+                base_path = os.path.abspath(".")  # For development
+            return os.path.join(base_path, relative_path)
+
+        # ✅ Use resource_path instead of __file__
+        db_path = resource_path("students.db")
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
@@ -1535,7 +1563,7 @@ class MainApp:
             return
 
         # Delete from database
-        conn = sqlite3.connect("students.db")
+        conn = sqlite3.connect(resource_path("students.db"))
         cursor = conn.cursor()
         cursor.execute("DELETE FROM students WHERE reg_no=?", (reg_no,))
         conn.commit()
@@ -1559,7 +1587,7 @@ class MainApp:
 
             # Load photo
             reg_no = self.tree.item(selected_item[0])['values'][0]
-            conn = sqlite3.connect("students.db")
+            conn = sqlite3.connect(resource_path("students.db"))
             cursor = conn.cursor()
             cursor.execute("SELECT photo_path FROM students WHERE reg_no=?", (reg_no,))
             row = cursor.fetchone()
@@ -1683,7 +1711,7 @@ class MainApp:
             return
 
         try:
-            conn = sqlite3.connect("students.db")
+            conn = sqlite3.connect(resource_path("students.db"))
             cursor = conn.cursor()
             cursor.execute('''INSERT INTO students (
                                 reg_no, surname, othernames, sex, preferred_course,
@@ -1714,7 +1742,7 @@ class MainApp:
             .grid(row=0, column=0, padx=10, pady=10)
 
         # Fetch registration numbers
-        conn = sqlite3.connect("students.db")
+        conn = sqlite3.connect(resource_path("students.db"))
         cursor = conn.cursor()
         cursor.execute("SELECT reg_no FROM students")
         reg_nos = [row[0] for row in cursor.fetchall()]
@@ -1806,7 +1834,7 @@ class MainApp:
             if not hasattr(self, 'candidate_tree') or not self.candidate_tree.winfo_exists():
                 return
 
-            conn = sqlite3.connect("students.db")
+            conn = sqlite3.connect(resource_path("students.db"))
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT reg_no, name, preferred_course, predicted_course, admission_status FROM candidate_courses"
@@ -1835,7 +1863,7 @@ class MainApp:
 
     def export_candidate_excel(self):
         import pandas as pd
-        conn = sqlite3.connect("students.db")
+        conn = sqlite3.connect(resource_path("students.db"))
         df = pd.read_sql_query("SELECT * FROM candidate_courses", conn)
         df.to_excel("candidate_courses.xlsx", index=False)
         conn.close()
@@ -1844,7 +1872,7 @@ class MainApp:
         from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
         from reportlab.lib import colors
 
-        conn = sqlite3.connect("students.db")
+        conn = sqlite3.connect(resource_path("students.db"))
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM candidate_courses")
         data = cursor.fetchall()
@@ -1867,7 +1895,7 @@ class MainApp:
     def clear_candidate_data(self):
         confirm = messagebox.askyesno("Confirm", "Are you sure you want to clear all candidate course entries?")
         if confirm:
-            conn = sqlite3.connect("students.db")
+            conn = sqlite3.connect(resource_path("students.db"))
             cursor = conn.cursor()
             cursor.execute("DELETE FROM candidate_courses")
             conn.commit()
@@ -1906,7 +1934,7 @@ class MainApp:
         form_frame.pack()
 
         # Fetch registered reg_nos
-        conn = sqlite3.connect("students.db")
+        conn = sqlite3.connect(resource_path("students.db"))
         cursor = conn.cursor()
         cursor.execute("SELECT reg_no FROM students")
         reg_nos = [row[0] for row in cursor.fetchall()]
@@ -1981,7 +2009,7 @@ class MainApp:
             return
 
         try:
-            conn = sqlite3.connect("students.db")
+            conn = sqlite3.connect(resource_path("students.db"))
             cursor = conn.cursor()
             cursor.execute('''
                 INSERT OR REPLACE INTO olevel_results (
@@ -2016,13 +2044,13 @@ class MainApp:
             return
 
         try:
-            model = joblib.load("admission_model.pkl")
+            model = joblib.load(resource_path("admission_model.pkl"))
         except Exception as e:
             messagebox.showerror("Model Error", f"❌ Failed to load prediction model:\n{e}")
             return
 
         try:
-            label_encoder = joblib.load("label_encoder.pkl")
+            label_encoder = joblib.load(resource_path("label_encoder.pkl"))
         except Exception as e:
             messagebox.showerror("Encoder Error", f"❌ Failed to load label encoder:\n{e}")
             return
@@ -2034,7 +2062,7 @@ class MainApp:
         }
 
         try:
-            conn = sqlite3.connect("students.db")
+            conn = sqlite3.connect(resource_path("students.db"))
             cursor = conn.cursor()
 
             # Get student name
@@ -2113,13 +2141,13 @@ class MainApp:
         from tkinter import messagebox
 
         try:
-            model = joblib.load("admission_model.pkl")
+            model = joblib.load(resource_path("admission_model.pkl"))
         except Exception as e:
             messagebox.showerror("Model Error", f"❌ Failed to load prediction model:\n{e}")
             return
 
         try:
-            label_encoder = joblib.load("label_encoder.pkl")
+            label_encoder = joblib.load(resource_path("label_encoder.pkl"))
         except Exception as e:
             messagebox.showerror("Encoder Error", f"❌ Failed to load label encoder:\n{e}")
             return
@@ -2154,7 +2182,7 @@ class MainApp:
             "Plant Science and Biotechnology": (200, 60)
         }
 
-        conn = sqlite3.connect("students.db")
+        conn = sqlite3.connect(resource_path("students.db"))
         cursor = conn.cursor()
 
         cursor.execute("SELECT reg_no, surname, othernames, preferred_course FROM students")
