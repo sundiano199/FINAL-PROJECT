@@ -2130,7 +2130,6 @@ class MainApp:
             "D7": 7, "E8": 8, "F9": 9
         }
 
-        # Course hierarchy
         course_hierarchy = [
             "Computer Science",
             "Microbiology",
@@ -2143,7 +2142,6 @@ class MainApp:
             "Plant Science and Biotechnology"
         ]
 
-        # Real admission cutoffs
         cutoffs = {
             "Computer Science": (240, 75),
             "Microbiology": (230, 70),
@@ -2151,7 +2149,7 @@ class MainApp:
             "Physics": (220, 68),
             "Applied Physics": (215, 66),
             "Industrial Chemistry": (210, 65),
-            "Mathematics and Statistics": (205, 65),
+            "Mathematics and Statistics": (205, 64),
             "Animal and Environmental Biology": (203, 60),
             "Plant Science and Biotechnology": (200, 60)
         }
@@ -2159,7 +2157,6 @@ class MainApp:
         conn = sqlite3.connect("students.db")
         cursor = conn.cursor()
 
-        # Fetch all candidates
         cursor.execute("SELECT reg_no, surname, othernames, preferred_course FROM students")
         candidates = cursor.fetchall()
 
@@ -2207,24 +2204,28 @@ class MainApp:
                 pred_code = model.predict(features)[0]
                 predicted_course = label_encoder.inverse_transform([pred_code])[0]
 
-                # Override if predicted course is above preferred
+                # Prevent upgrade: keep preferred if predicted is higher
                 if course_hierarchy.index(predicted_course) < course_hierarchy.index(preferred):
                     predicted_course = preferred
-                    # Don't reset scores – use their actual scores
 
-                # Final UTME/Post-UTME validation
-                utme_cut, putme_cut = cutoffs.get(predicted_course, (200, 60))
-                if total_utme < utme_cut or post_utme < putme_cut:
-                    predicted_course = "-"
-                    admission_status = "Not Admitted"
-                else:
-                    admission_status = "Admitted"
+                # Get the cutoffs for predicted course
+                utme_cut, putme_cut = cutoffs.get(predicted_course, (999, 999))  # fallback to invalid
+            except:
+                predicted_course = "-"
+                utme_cut, putme_cut = 999, 999  # will trigger not admitted
 
-            except Exception as e:
+            # Final Admission Decision
+            if (
+                    predicted_course == "-"
+                    or total_utme < utme_cut
+                    or post_utme < putme_cut
+            ):
                 predicted_course = "-"
                 admission_status = "Not Admitted"
+            else:
+                admission_status = "Admitted"
 
-            # Save
+            # Save to DB
             cursor.execute("""
                 INSERT OR REPLACE INTO candidate_courses
                 (reg_no, name, preferred_course, predicted_course, admission_status)
@@ -2237,7 +2238,7 @@ class MainApp:
         conn.close()
         self.load_candidate_courses_data()
 
-        messagebox.showinfo("Prediction Complete", f"✅ {success} candidates predicted using ML + cutoff rules.")
+        messagebox.showinfo("Prediction Complete", f"✅ {success} candidates predicted using ML + rule-based logic.")
 
 
 # --- Initialize App ---

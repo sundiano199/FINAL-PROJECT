@@ -1,45 +1,129 @@
-import pandas as pd
-import joblib
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-import matplotlib.pyplot as plt
+import csv
+import random
+from faker import Faker
 
-# Load dataset
-df = pd.read_csv("sample_student_data.csv")
+fake = Faker('en_GB')
 
-# Convert O'Level grades to numeric
-grade_map = {
-    "A1": 8, "B2": 7, "B3": 6,
-    "C4": 5, "C5": 4, "C6": 3,
-    "D7": 2, "E8": 1, "F9": 0
+# Course hierarchy and requirements
+course_map = {
+    "Computer Science": {"utme_min": 240, "post_utme_min": 75, "rank": 0},
+    "Microbiology": {"utme_min": 230, "post_utme_min": 70, "rank": 1},
+    "Biochemistry": {"utme_min": 225, "post_utme_min": 70, "rank": 2},
+    "Physics": {"utme_min": 220, "post_utme_min": 68, "rank": 3},
+    "Applied Physics": {"utme_min": 215, "post_utme_min": 66, "rank": 4},
+    "Industrial Chemistry": {"utme_min": 210, "post_utme_min": 65, "rank": 5},
+    "Mathematics and Statistics": {"utme_min": 205, "post_utme_min": 64, "rank": 6},
+    "Animal and Environmental Biology": {"utme_min": 203, "post_utme_min": 60, "rank": 7},
+    "Plant Science and Biotechnology": {"utme_min": 200, "post_utme_min": 60, "rank": 8}
 }
-subjects = ['English', 'Maths', 'Physics', 'Chemistry', 'Biology', 'Agric']
-for subject in subjects:
-    df[subject] = df[subject].map(grade_map)
+course_hierarchy = list(course_map.keys())
 
-# Encode target
-from sklearn.preprocessing import LabelEncoder
-le = LabelEncoder()
-df['admitted_department'] = df['admitted_department'].astype(str)
-df['department_encoded'] = le.fit_transform(df['admitted_department'])
+pass_grades = ['A1', 'B2', 'B3', 'C4', 'C5', 'C6']
+fail_grades = ['D7', 'E8', 'F9']
+all_grades = pass_grades + fail_grades
 
-# Features and target
-X = df[['UTME', 'Post-UTME', 'English', 'Maths', 'Physics', 'Chemistry', 'Biology', 'Agric']]
-y = df['department_encoded']
+def is_pass(grade):
+    return grade in pass_grades
 
-# Split into train/test
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+def generate_student(index, category):
+    preferred = random.choice(course_hierarchy)
+    name = fake.name()
+    reg_no = f"REG2025_{index + 1:04d}"
 
-# Load trained model
-model = joblib.load("admission_model.pkl")
+    english = random.choice(pass_grades)
+    maths = random.choice(pass_grades)
+    sciences = [random.choice(all_grades) for _ in range(4)]
+    others = [random.choice(all_grades) for _ in range(5)]
 
-# Make predictions on test set
-y_pred = model.predict(X_test)
+    # Valid science pass count
+    science_passes = sum(1 for g in sciences if is_pass(g))
 
-# Generate and display confusion matrix
-cm = confusion_matrix(y_test, y_pred)
-disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=le.classes_)
-disp.plot(xticks_rotation=45, cmap=plt.cm.Blues)
-plt.title("Confusion Matrix for Admission Prediction")
-plt.tight_layout()
-plt.show()
+    # Base scores
+    utme = random.randint(180, 300)
+    post_utme = random.randint(50, 100)
+
+    admitted = "-"
+
+    if category == "match":
+        # Ensure scores and grades meet preferred course requirements
+        req = course_map[preferred]
+        utme = random.randint(req["utme_min"], req["utme_min"] + 30)
+        post_utme = random.randint(req["post_utme_min"], req["post_utme_min"] + 15)
+        sciences = [random.choice(pass_grades) for _ in range(3)] + [random.choice(all_grades)]
+        english = random.choice(pass_grades)
+        maths = random.choice(pass_grades)
+        admitted = preferred
+
+    elif category == "fallback":
+        # Pick a high preferred course
+        preferred = random.choice(course_hierarchy[:5])  # Top 5
+        req = course_map[preferred]
+
+        # Fail to meet preferred requirements
+        utme = random.randint(180, req["utme_min"] - 1)
+        post_utme = random.randint(50, req["post_utme_min"] - 1)
+
+        # Check for fallback lower courses
+        for course in course_hierarchy[course_map[preferred]['rank'] + 1:]:
+            r = course_map[course]
+            if utme >= r["utme_min"] and post_utme >= r["post_utme_min"]:
+                admitted = course
+                break
+
+        english = random.choice(pass_grades)
+        maths = random.choice(pass_grades)
+        sciences = [random.choice(pass_grades) for _ in range(2)] + [random.choice(all_grades) for _ in range(2)]
+
+    elif category == "rejected":
+        # Make them fail English, Math, or all science
+        fail_type = random.choice(["english", "math", "science"])
+        if fail_type == "english":
+            english = random.choice(fail_grades)
+        elif fail_type == "math":
+            maths = random.choice(fail_grades)
+        else:
+            sciences = [random.choice(fail_grades) for _ in range(4)]
+
+        utme = random.randint(120, 180)
+        post_utme = random.randint(30, 55)
+
+    return [
+        reg_no, name, preferred, utme, post_utme,
+        english, maths, *sciences,
+        *others,
+        admitted
+    ]
+
+# Generate dataset
+students = []
+index = 0
+
+for _ in range(200):  # 20% perfect match
+    students.append(generate_student(index, "match"))
+    index += 1
+
+for _ in range(600):  # 60% fallback admitted
+    students.append(generate_student(index, "fallback"))
+    index += 1
+
+for _ in range(200):  # 20% rejected
+    students.append(generate_student(index, "rejected"))
+    index += 1
+
+# Shuffle for realism
+random.shuffle(students)
+
+# Save to CSV
+header = [
+    "Registration No", "Name", "Preferred Course", "UTME", "Post-UTME",
+    "English", "Maths", "Physics", "Chemistry", "Biology", "Agric",
+    "Civic Education", "Geography", "Economics", "Government", "Literature",
+    "admitted_department"
+]
+
+with open("admission_dataset_final.csv", "w", newline="", encoding="utf-8") as f:
+    writer = csv.writer(f)
+    writer.writerow(header)
+    writer.writerows(students)
+
+print("✅ Final dataset generated: 'admission_dataset_final.csv'")
